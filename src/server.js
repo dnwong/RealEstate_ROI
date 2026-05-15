@@ -133,12 +133,18 @@ function validateEmail(email) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 
+async function isEffectivelyActiveUser(user) {
+  if (!user) return false;
+  if (user.status === "active") return true;
+  return user.role === "admin" && await isFirstAdminUser(user.id);
+}
+
 async function currentUser(req) {
   if (!isArchiveEnabled()) return null;
   const session = readSession(req);
   if (!session) return null;
   const user = await getUserById(session.id);
-  return user?.status === "active" ? user : null;
+  return await isEffectivelyActiveUser(user) ? user : null;
 }
 
 async function requireUser(req, res, next) {
@@ -237,7 +243,7 @@ app.post("/api/auth/login", async (req, res) => {
       res.status(401).json({ error: "Invalid username/email or password." });
       return;
     }
-    if (user.status !== "active") {
+    if (!await isEffectivelyActiveUser(user)) {
       res.status(403).json({ error: user.status === "pending" ? "Account pending admin approval." : "Account is disabled." });
       return;
     }
