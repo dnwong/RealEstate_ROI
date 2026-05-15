@@ -439,7 +439,7 @@ function renderArchives(searches) {
 
 function updateDeleteArchivesButton() {
   if (!deleteArchivesBtn) return;
-  deleteArchivesBtn.disabled = currentArchives.length === 0 || (archiveDeleteMode && selectedArchiveIds.size === 0);
+  deleteArchivesBtn.disabled = currentArchives.length === 0;
   deleteArchivesBtn.textContent = archiveDeleteMode && selectedArchiveIds.size
     ? `Delete Selected (${selectedArchiveIds.size})`
     : "Delete";
@@ -473,7 +473,11 @@ async function loadArchives() {
 }
 
 async function deleteSelectedArchives() {
-  if (!archiveStatusEl || !selectedArchiveIds.size) return;
+  if (!archiveStatusEl) return;
+  if (!selectedArchiveIds.size) {
+    archiveStatusEl.textContent = "Select one or more archived searches to delete.";
+    return;
+  }
   const ids = [...selectedArchiveIds];
   const confirmed = window.confirm(`Delete ${ids.length} selected archived search${ids.length === 1 ? "" : "es"}? This cannot be undone.`);
   if (!confirmed) return;
@@ -605,6 +609,7 @@ deleteArchivesBtn?.addEventListener("click", () => {
     archiveDeleteMode = true;
     selectedArchiveIds.clear();
     renderArchives(currentArchives);
+    if (archiveStatusEl) archiveStatusEl.textContent = "Select one or more archived searches to delete.";
     return;
   }
   deleteSelectedArchives();
