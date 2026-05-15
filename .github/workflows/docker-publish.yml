@@ -8,6 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  # GHCR requires lowercase; repo "RealEstate_ROI" is NOT the image path when pulled.
+  IMAGE_NAME: dnwong/realestate-roi
 
 jobs:
   build-and-push:
@@ -31,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=
