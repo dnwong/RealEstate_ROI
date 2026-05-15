@@ -147,25 +147,55 @@ function pickStreetAddress(obj) {
   return null;
 }
 
-/** Monthly HOA in USD when present on search/detail fragments (often sparse). */
-function pickHoaMonthly(obj) {
-  const hi = obj.hdpData?.homeInfo;
-  const rf = obj.resoFacts;
-  const mini = obj.miniCardData;
-  const candidates = [
-    obj.monthlyHoaFee,
-    obj.monthlyHoa,
-    obj.hoaFee,
-    obj.hoa,
-    hi?.monthlyHoaFee,
-    hi?.hoaFee,
-    mini?.monthlyHoaFee,
-    rf?.monthlyHoaFee,
-    rf?.hoaFee,
+function normalizePhotoUrl(val) {
+  if (val == null) return null;
+  if (typeof val === "string") {
+    const s = val.trim();
+    if (!s) return null;
+    if (s.startsWith("//")) return `https:${s}`;
+    if (/^https?:\/\//i.test(s)) return s;
+    return null;
+  }
+  if (typeof val === "object") {
+    return (
+      normalizePhotoUrl(val.url) ||
+      normalizePhotoUrl(val.href) ||
+      normalizePhotoUrl(val.src) ||
+      normalizePhotoUrl(val.mixedSources?.jpeg?.[0]?.url) ||
+      normalizePhotoUrl(val.mixedSources?.webp?.[0]?.url)
+    );
+  }
+  return null;
+}
+
+/** Main listing photo URL from Zillow search card JSON (field names vary). */
+function pickPhotoUrl(obj) {
+  const scalar = [
+    obj.imgSrc,
+    obj.imageUrl,
+    obj.photoUrl,
+    obj.hdpData?.homeInfo?.imgSrc,
+    obj.hdpData?.homeInfo?.hiResImageLink,
+    obj.miniCardData?.imgUrl,
+    obj.miniCardData?.imageUrl,
   ];
-  for (const c of candidates) {
-    const n = parseMoney(c);
-    if (n != null && n > 0) return n;
+  for (const c of scalar) {
+    const u = normalizePhotoUrl(c);
+    if (u) return u;
+  }
+  const arrays = [
+    obj.carouselPhotos,
+    obj.photos,
+    obj.media?.photos,
+    obj.hdpData?.homeInfo?.carouselPhotos,
+    obj.miniCardData?.photos,
+  ];
+  for (const arr of arrays) {
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      const u = normalizePhotoUrl(item);
+      if (u) return u;
+    }
   }
   return null;
 }
@@ -181,7 +211,7 @@ function createListingRow(zpid, price, obj) {
     address,
     streetAddress: street,
     sqft: pickSqft(obj),
-    hoaMonthly: pickHoaMonthly(obj),
+    photoUrl: pickPhotoUrl(obj),
   };
 }
 
@@ -205,9 +235,9 @@ function enrichListingFromObj(row, obj) {
     const sq = pickSqft(obj);
     if (sq != null) row.sqft = sq;
   }
-  if (row.hoaMonthly == null) {
-    const h = pickHoaMonthly(obj);
-    if (h != null) row.hoaMonthly = h;
+  if (row.photoUrl == null) {
+    const p = pickPhotoUrl(obj);
+    if (p) row.photoUrl = p;
   }
 }
 
@@ -232,7 +262,7 @@ function pickSqft(obj) {
  * @param {number} limit
  */
 export function extractListingCards(root, limit) {
-  /** @type {Map<number, { zpid: number, price: number, bedrooms: number | null, homeType: string | null, address: string | null, streetAddress: string | null, sqft: number | null, hoaMonthly: number | null }>} */
+  /** @type {Map<number, { zpid: number, price: number, bedrooms: number | null, homeType: string | null, address: string | null, streetAddress: string | null, sqft: number | null, photoUrl: string | null }>} */
   const byZpid = new Map();
   const seen = new Set();
 
@@ -288,7 +318,7 @@ function mergeListingDuplicates(a, b) {
     address: a.address ?? b.address,
     streetAddress: a.streetAddress ?? b.streetAddress,
     sqft: a.sqft ?? b.sqft,
-    hoaMonthly: a.hoaMonthly ?? b.hoaMonthly,
+    photoUrl: a.photoUrl ?? b.photoUrl,
   };
 }
 

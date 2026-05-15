@@ -4,8 +4,8 @@ import { mean, median } from "./stats.js";
  * For each sale, find comparable rentals (by bedroom match with fallbacks), then
  * compare list price to comp rent distribution (median/mean yield).
  *
- * @param {Array<{ zpid: number, price: number, bedrooms: number | null, homeType: string | null, address?: string | null, streetAddress?: string | null, sqft?: number | null, hoaMonthly?: number | null }>} sales
- * @param {Array<{ zpid: number, price: number, bedrooms: number | null, homeType: string | null, address?: string | null, streetAddress?: string | null, sqft?: number | null, hoaMonthly?: number | null }>} rentals
+ * @param {Array<{ zpid: number, price: number, bedrooms: number | null, homeType: string | null, address?: string | null, streetAddress?: string | null, sqft?: number | null, photoUrl?: string | null }>} sales
+ * @param {Array<{ zpid: number, price: number, bedrooms: number | null, homeType: string | null, address?: string | null, streetAddress?: string | null, sqft?: number | null, photoUrl?: string | null }>} rentals
  * @param {{ minComps?: number, preferType?: boolean }} [options]
  */
 export function compareSalesToRentComps(sales, rentals, options = {}) {
@@ -83,7 +83,7 @@ export function compareSalesToRentComps(sales, rentals, options = {}) {
       saleZpid: sale.zpid,
       saleAddress: sale.address ?? null,
       saleStreet: street,
-      saleHoaMonthly: sale.hoaMonthly ?? null,
+      salePhotoUrl: sale.photoUrl ?? null,
       salePrice: sale.price,
       saleBeds: sale.bedrooms,
       saleSqft: sale.sqft ?? null,

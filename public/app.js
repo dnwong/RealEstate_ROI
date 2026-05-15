@@ -38,6 +38,19 @@ function openListingInNewTab(url) {
   return false;
 }
 
+function renderPhotoCell(photoUrl, listingUrl, altText) {
+  if (!photoUrl) {
+    return '<td class="col-photo"><span class="photo-placeholder" title="No photo in scrape"></span></td>';
+  }
+  const src = escapeHtml(String(photoUrl));
+  const alt = escapeHtml(altText || "Listing photo");
+  if (listingUrl) {
+    const href = escapeHtml(listingUrl);
+    return `<td class="col-photo"><a href="${href}" target="_blank" rel="noopener noreferrer" class="listing-photo-link"><img class="listing-thumb" src="${src}" alt="${alt}" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></a></td>`;
+  }
+  return `<td class="col-photo"><img class="listing-thumb" src="${src}" alt="${alt}" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></td>`;
+}
+
 function tierLabel(t) {
   const map = {
     exact_bedrooms: "Exact beds",
@@ -82,8 +95,8 @@ function renderTable(data) {
         <table>
           <thead>
             <tr>
+              <th class="col-photo" aria-label="Photo"></th>
               <th>Street</th>
-              <th class="num">HOA / mo</th>
               <th class="num">List</th>
               <th class="num">Beds</th>
               <th>Type</th>
@@ -132,13 +145,14 @@ function renderTable(data) {
                 const rowAttrs = listingUrl
                   ? ` class="listing-row" data-listing-url="${listingUrlAttr}"`
                   : "";
-                const hoaCell =
-                  r.saleHoaMonthly != null && Number.isFinite(r.saleHoaMonthly)
-                    ? money(r.saleHoaMonthly)
-                    : "—";
+                const photoCell = renderPhotoCell(
+                  r.salePhotoUrl,
+                  listingUrl,
+                  streetDisplay
+                );
                 return `<tr${rowAttrs}>
+                  ${photoCell}
                   <td>${streetInner}</td>
-                  <td class="num">${hoaCell}</td>
                   <td class="num">${money(r.salePrice)}</td>
                   <td class="num">${r.saleBeds ?? "—"}</td>
                   <td>${escapeHtml(String(r.saleType ?? "—"))}</td>
@@ -155,10 +169,9 @@ function renderTable(data) {
       </div>
       <p class="footnote">
         Gross yield uses <strong>median comparable rent × 12 ÷ list price</strong>.
-        Comps exclude the subject (rent zpids are separate from sale zpids). Street and
-        monthly HOA come from Zillow card JSON when present—search results often omit HOA.
-        Hover a street cell to see the full formatted address when available. Not
-        underwriting: no vacancy, taxes beyond HOA, or debt service.
+        Comps exclude the subject (rent zpids are separate from sale zpids). Thumbnails use
+        Zillow photo URLs from search JSON when available. Hover a street cell for the full
+        address. Not underwriting: no vacancy, taxes, HOA, or debt service.
       </p>
     </div>
   `;
@@ -171,7 +184,7 @@ function renderTable(data) {
     tbody.addEventListener("click", (ev) => {
       if (ev.button !== 0) return;
       // Let the real <a target="_blank"> handle address clicks (works with strict popup rules).
-      if (ev.target.closest("a.listing-link")) return;
+      if (ev.target.closest("a.listing-link, a.listing-photo-link")) return;
 
       const tr = ev.target.closest("tr.listing-row");
       if (!tr || !tbody.contains(tr)) return;

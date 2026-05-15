@@ -463,10 +463,46 @@ tbody tr.listing-row a.listing-link:hover {
   text-decoration: underline;
 }
 
-tbody tr.listing-row td:first-child .listing-link {
+tbody tr.listing-row td:nth-child(2) .listing-link {
   display: block;
   margin: -0.55rem -0.65rem;
   padding: 0.55rem 0.65rem;
+}
+
+.col-photo {
+  width: 3.75rem;
+  padding: 0.35rem 0.45rem;
+  vertical-align: middle;
+}
+
+.listing-thumb {
+  display: block;
+  width: 3.25rem;
+  height: 2.45rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.listing-photo-link {
+  display: block;
+  line-height: 0;
+  border-radius: var(--radius-sm);
+}
+
+.listing-photo-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.photo-placeholder {
+  display: block;
+  width: 3.25rem;
+  height: 2.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
 }
 
 th {
