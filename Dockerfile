@@ -1,5 +1,5 @@
-# Playwright base image includes Chromium + OS deps (matches package.json Playwright ~1.52)
-FROM mcr.microsoft.com/playwright:v1.52.0-jammy
+# Playwright base image includes Chromium + OS deps (must match package-lock playwright version)
+FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
