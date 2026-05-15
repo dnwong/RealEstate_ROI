@@ -22,6 +22,8 @@ let currentUser = null;
 let authMode = "login";
 let resetPasswordStep = "request";
 let selectedArchiveIds = new Set();
+let archiveDeleteMode = false;
+let currentArchives = [];
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -401,9 +403,13 @@ async function showAdminPanel() {
 
 function renderArchives(searches) {
   if (!archiveListEl) return;
+  currentArchives = searches;
   selectedArchiveIds = new Set([...selectedArchiveIds].filter((id) => searches.some((s) => String(s.id) === id)));
   updateDeleteArchivesButton();
   if (!searches.length) {
+    archiveDeleteMode = false;
+    selectedArchiveIds.clear();
+    updateDeleteArchivesButton();
     archiveListEl.innerHTML = '<p class="archive-empty">No archived searches yet.</p>';
     return;
   }
@@ -412,9 +418,10 @@ function renderArchives(searches) {
       const id = escapeHtml(String(s.id));
       const rawId = String(s.id);
       const checked = selectedArchiveIds.has(rawId) ? " checked" : "";
+      const selectHidden = archiveDeleteMode ? "" : " hidden";
       const rowCount = Number(s.row_count ?? 0);
       return `<div class="archive-item" data-archive-id="${id}">
-        <label class="archive-select">
+        <label class="archive-select"${selectHidden}>
           <input type="checkbox" class="archive-checkbox" data-archive-id="${id}"${checked} />
           <span class="sr-only">Select archive</span>
         </label>
@@ -432,10 +439,10 @@ function renderArchives(searches) {
 
 function updateDeleteArchivesButton() {
   if (!deleteArchivesBtn) return;
-  deleteArchivesBtn.disabled = selectedArchiveIds.size === 0;
-  deleteArchivesBtn.textContent = selectedArchiveIds.size
-    ? `Delete selected (${selectedArchiveIds.size})`
-    : "Delete selected";
+  deleteArchivesBtn.disabled = currentArchives.length === 0 || (archiveDeleteMode && selectedArchiveIds.size === 0);
+  deleteArchivesBtn.textContent = archiveDeleteMode && selectedArchiveIds.size
+    ? `Delete Selected (${selectedArchiveIds.size})`
+    : "Delete";
 }
 
 async function loadArchives() {
@@ -452,6 +459,7 @@ async function loadArchives() {
     }
     if (!body.archiveEnabled) {
       archiveStatusEl.textContent = "Archives are disabled. Set DATABASE_URL to enable Postgres archive storage.";
+      archiveDeleteMode = false;
       selectedArchiveIds.clear();
       updateDeleteArchivesButton();
       renderArchives([]);
@@ -486,6 +494,7 @@ async function deleteSelectedArchives() {
       updateDeleteArchivesButton();
       return;
     }
+    archiveDeleteMode = false;
     selectedArchiveIds.clear();
     archiveStatusEl.textContent = `Deleted ${body.deletedCount ?? 0} archived search${body.deletedCount === 1 ? "" : "es"}.`;
     await loadArchives();
@@ -592,6 +601,12 @@ refreshArchivesBtn?.addEventListener("click", () => {
 });
 
 deleteArchivesBtn?.addEventListener("click", () => {
+  if (!archiveDeleteMode) {
+    archiveDeleteMode = true;
+    selectedArchiveIds.clear();
+    renderArchives(currentArchives);
+    return;
+  }
   deleteSelectedArchives();
 });
 
