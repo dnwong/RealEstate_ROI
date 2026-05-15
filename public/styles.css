@@ -89,12 +89,14 @@ body {
 }
 
 .main {
-  max-width: 1080px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 8px;
 }
 
 .card {
+  width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -325,6 +327,7 @@ body {
 }
 
 .archive-card {
+  width: 100%;
   margin-top: 8px;
 }
 
@@ -419,10 +422,12 @@ body {
 }
 
 .results {
+  width: 100%;
   margin-top: 8px;
 }
 
 .results-card {
+  width: 100%;
   margin-top: 0;
 }
 
