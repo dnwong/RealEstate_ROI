@@ -1,6 +1,16 @@
 # Portainer: Stacks → Add stack → paste this file.
 # Replace IMAGE_TAG with the short git SHA from a green Actions run (e.g. 9888a5c).
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: realestate_roi
+      POSTGRES_USER: realestate
+      POSTGRES_PASSWORD: realestate
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   realestate-roi:
     image: ghcr.io/dnwong/realestate-roi:${IMAGE_TAG:-latest}
     pull_policy: always
@@ -11,6 +21,12 @@ services:
       HOST: "0.0.0.0"
       NODE_ENV: production
       PLAYWRIGHT_IN_DOCKER: "1"
+      DATABASE_URL: postgres://realestate:realestate@postgres:5432/realestate_roi
+    depends_on:
+      - postgres
     shm_size: "1gb"
     init: true
     restart: unless-stopped
+
+volumes:
+  postgres-data:

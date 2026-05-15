@@ -81,6 +81,18 @@
         </div>
       </form>
 
+      <section class="card archive-card" aria-labelledby="archive-title">
+        <div class="archive-head">
+          <div>
+            <h2 id="archive-title" class="archive-title">Archived searches</h2>
+            <p class="archive-copy">Load previous search results by date and searched location.</p>
+          </div>
+          <button type="button" id="refreshArchives" class="secondary-btn">Refresh</button>
+        </div>
+        <div id="archiveStatus" class="archive-status meta" aria-live="polite"></div>
+        <div id="archiveList" class="archive-list"></div>
+      </section>
+
       <section id="results" class="results hidden" hidden></section>
     </main>
 

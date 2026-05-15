@@ -1,5 +1,17 @@
 # Local build (optional). For Portainer/GHCR use docker-compose.ghcr.yml instead.
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: realestate_roi
+      POSTGRES_USER: realestate
+      POSTGRES_PASSWORD: realestate
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   realestate-roi:
     build:
       context: .
@@ -11,6 +23,12 @@ services:
       PORT: "3000"
       HOST: "0.0.0.0"
       NODE_ENV: production
+      DATABASE_URL: postgres://realestate:realestate@postgres:5432/realestate_roi
+    depends_on:
+      - postgres
     shm_size: "1gb"
     init: true
     restart: unless-stopped
+
+volumes:
+  postgres-data:

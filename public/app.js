@@ -2,6 +2,9 @@ const form = document.getElementById("form");
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 const submitBtn = document.getElementById("submit");
+const archiveStatusEl = document.getElementById("archiveStatus");
+const archiveListEl = document.getElementById("archiveList");
+const refreshArchivesBtn = document.getElementById("refreshArchives");
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -15,6 +18,16 @@ function money(n) {
 function pct(n) {
   if (n == null || !Number.isFinite(n)) return "—";
   return `${n.toFixed(2)}%`;
+}
+
+function dateTime(s) {
+  if (!s) return "Unknown date";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return String(s);
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(d);
 }
 
 /** Opens the for-sale property page for a numeric zpid. */
@@ -208,6 +221,70 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function renderArchives(searches) {
+  if (!archiveListEl) return;
+  if (!searches.length) {
+    archiveListEl.innerHTML = '<p class="archive-empty">No archived searches yet.</p>';
+    return;
+  }
+  archiveListEl.innerHTML = searches
+    .map((s) => {
+      const id = escapeHtml(String(s.id));
+      const rowCount = Number(s.row_count ?? 0);
+      return `<button type="button" class="archive-item" data-archive-id="${id}">
+        <span class="archive-item-main">
+          <span class="archive-item-region">${escapeHtml(String(s.region))}</span>
+          <span class="archive-item-date">${escapeHtml(dateTime(s.created_at))}</span>
+        </span>
+        <span class="archive-item-meta">${rowCount} rows · ${s.sale_count} sales · ${s.rent_count} rentals</span>
+      </button>`;
+    })
+    .join("");
+}
+
+async function loadArchives() {
+  if (!archiveStatusEl || !archiveListEl) return;
+  archiveStatusEl.textContent = "Loading archives…";
+  try {
+    const res = await fetch("/api/archives?limit=50", {
+      headers: { Accept: "application/json" },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      archiveStatusEl.textContent = body.error || `Archive request failed (${res.status})`;
+      return;
+    }
+    if (!body.archiveEnabled) {
+      archiveStatusEl.textContent = "Archives are disabled. Set DATABASE_URL to enable Postgres archive storage.";
+      renderArchives([]);
+      return;
+    }
+    archiveStatusEl.textContent = `${body.searches?.length ?? 0} archived searches found.`;
+    renderArchives(body.searches || []);
+  } catch (e) {
+    archiveStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function loadArchivedSearch(id) {
+  statusEl.textContent = "Loading archived search…";
+  try {
+    const res = await fetch(`/api/archives/${encodeURIComponent(id)}`, {
+      headers: { Accept: "application/json" },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      statusEl.textContent = body.error || `Archive request failed (${res.status})`;
+      return;
+    }
+    statusEl.textContent = `Loaded archive from ${dateTime(body.archivedAt)}.`;
+    renderTable(body);
+    resultsEl.scrollIntoView({ block: "start", behavior: "smooth" });
+  } catch (e) {
+    statusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+}
+
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const fd = new FormData(form);
@@ -250,8 +327,11 @@ form.addEventListener("submit", async (ev) => {
       statusEl.textContent = body.error || `Request failed (${res.status})`;
       return;
     }
-    statusEl.textContent = `Done — ${body.rows?.length ?? 0} sale rows compared.`;
+    statusEl.textContent = body.archiveId
+      ? `Done — ${body.rows?.length ?? 0} sale rows compared and archived.`
+      : `Done — ${body.rows?.length ?? 0} sale rows compared.`;
     renderTable(body);
+    await loadArchives();
   } catch (e) {
     statusEl.textContent = e instanceof Error ? e.message : String(e);
   } finally {
@@ -260,3 +340,15 @@ form.addEventListener("submit", async (ev) => {
     submitBtn.disabled = false;
   }
 });
+
+refreshArchivesBtn?.addEventListener("click", () => {
+  loadArchives();
+});
+
+archiveListEl?.addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button.archive-item");
+  if (!btn || !archiveListEl.contains(btn)) return;
+  loadArchivedSearch(btn.dataset.archiveId);
+});
+
+loadArchives();

@@ -6,6 +6,13 @@ import { dirname, join } from "node:path";
 
 import { scrapeZillowListings } from "./zillowScrape.js";
 import { compareSalesToRentComps } from "./compare.js";
+import {
+  getArchivedSearch,
+  initDb,
+  isArchiveEnabled,
+  listArchivedSearches,
+  saveArchivedSearch,
+} from "./db.js";
 
 function playwrightInfo() {
   try {
@@ -42,7 +49,7 @@ function parseZip(q) {
 function healthPayload() {
   const inDocker =
     process.env.PLAYWRIGHT_IN_DOCKER === "1" || existsSync("/.dockerenv");
-  return { ok: true, buildId, inDocker, ...playwrightInfo() };
+  return { ok: true, buildId, inDocker, archiveEnabled: isArchiveEnabled(), ...playwrightInfo() };
 }
 
 app.get("/health", (_req, res) => {
@@ -54,6 +61,50 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use(express.static(publicDir));
+
+app.get("/api/archives", async (req, res) => {
+  try {
+    const limitRaw = Number(req.query.limit);
+    const limit = Number.isFinite(limitRaw) ? limitRaw : 50;
+    res.json({
+      archiveEnabled: isArchiveEnabled(),
+      searches: await listArchivedSearches(limit),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ error: msg });
+  }
+});
+
+app.get("/api/archives/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid archive id." });
+      return;
+    }
+    const archived = await getArchivedSearch(id);
+    if (!archived) {
+      res.status(404).json({ error: "Archived search not found." });
+      return;
+    }
+    res.json({
+      archiveId: archived.id,
+      archivedAt: archived.created_at,
+      region: archived.region,
+      saleUrl: archived.sale_url,
+      rentUrl: archived.rent_url,
+      saleCount: archived.sale_count,
+      rentCount: archived.rent_count,
+      minComps: archived.min_comps,
+      preferType: archived.prefer_type,
+      rows: archived.rows,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ error: msg });
+  }
+});
 
 app.get("/api/compare", async (req, res) => {
   const zip = parseZip(req.query.zip);
@@ -118,7 +169,7 @@ app.get("/api/compare", async (req, res) => {
       { minComps, preferType }
     );
 
-    res.json({
+    const payload = {
       region: zip ? `ZIP ${zip}` : `${city}, ${state}`,
       saleUrl: salePage.url,
       rentUrl: rentPage.url,
@@ -127,11 +178,33 @@ app.get("/api/compare", async (req, res) => {
       minComps,
       preferType,
       rows,
+    };
+
+    const archived = await saveArchivedSearch({
+      ...payload,
+      zip,
+      city: city || null,
+      state: state || null,
+      query: { zip, city: city || null, state: state || null, limit, minComps, preferType },
+      saleListings: salePage.listings,
+      rentListings: rentPage.listings,
+    });
+
+    res.json({
+      ...payload,
+      archiveId: archived?.id ?? null,
+      archivedAt: archived?.created_at ?? null,
+      archiveEnabled: isArchiveEnabled(),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     res.status(500).json({ error: msg });
   }
+});
+
+initDb().catch((e) => {
+  const msg = e instanceof Error ? e.message : String(e);
+  console.error(`Archive DB init failed: ${msg}`);
 });
 
 const port = Number(process.env.PORT) || 3000;
