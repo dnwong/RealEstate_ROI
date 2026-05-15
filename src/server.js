@@ -30,7 +30,8 @@ const publicDir = join(__dirname, "..", "public");
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json());
-app.use(express.static(publicDir));
+
+const buildId = process.env.BUILD_ID || process.env.GITHUB_SHA || "local";
 
 function parseZip(q) {
   if (!q || typeof q !== "string") return null;
@@ -38,11 +39,21 @@ function parseZip(q) {
   return z.length === 5 ? z : null;
 }
 
-app.get("/api/health", (_req, res) => {
+function healthPayload() {
   const inDocker =
     process.env.PLAYWRIGHT_IN_DOCKER === "1" || existsSync("/.dockerenv");
-  res.json({ ok: true, inDocker, ...playwrightInfo() });
+  return { ok: true, buildId, inDocker, ...playwrightInfo() };
+}
+
+app.get("/health", (_req, res) => {
+  res.json(healthPayload());
 });
+
+app.get("/api/health", (_req, res) => {
+  res.json(healthPayload());
+});
+
+app.use(express.static(publicDir));
 
 app.get("/api/compare", async (req, res) => {
   const zip = parseZip(req.query.zip);
@@ -131,6 +142,7 @@ const server = app.listen(port, host, () => {
       ? ` (all interfaces — use http://127.0.0.1:${port}/ or your host IP)`
       : "";
   console.error(`Compare UI: http://127.0.0.1:${port}/${hint}`);
+  console.error(`Health: http://127.0.0.1:${port}/health (build ${buildId})`);
 });
 server.requestTimeout = 180000;
 server.headersTimeout = 185000;
