@@ -5,6 +5,20 @@ const submitBtn = document.getElementById("submit");
 const archiveStatusEl = document.getElementById("archiveStatus");
 const archiveListEl = document.getElementById("archiveList");
 const refreshArchivesBtn = document.getElementById("refreshArchives");
+const mainEl = document.querySelector(".main");
+const authViewEl = document.getElementById("authView");
+const authForm = document.getElementById("authForm");
+const authStatusEl = document.getElementById("authStatus");
+const authTitleEl = document.getElementById("authTitle");
+const userBarEl = document.getElementById("userBar");
+const settingsViewEl = document.getElementById("settingsView");
+const adminViewEl = document.getElementById("adminView");
+const profileForm = document.getElementById("profileForm");
+const profileStatusEl = document.getElementById("profileStatus");
+const adminStatusEl = document.getElementById("adminStatus");
+const adminUsersEl = document.getElementById("adminUsers");
+let currentUser = null;
+let authMode = "login";
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -228,6 +242,139 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+async function apiJson(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  authTitleEl.textContent =
+    mode === "register" ? "Register" : mode === "reset" ? "Reset password" : "Login";
+  authForm.querySelector(".auth-submit").textContent =
+    mode === "register" ? "Register" : mode === "reset" ? "Reset password" : "Login";
+  authForm.querySelectorAll("[data-auth-field]").forEach((el) => {
+    const field = el.dataset.authField;
+    el.hidden =
+      (field === "login" && mode !== "login") ||
+      (field === "username" && mode !== "register") ||
+      (field === "email" && mode === "login") ||
+      (field === "token" && mode !== "reset");
+  });
+  document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.authMode === mode);
+  });
+  authStatusEl.textContent = "";
+}
+
+function renderUserBar() {
+  if (!userBarEl) return;
+  if (!currentUser) {
+    userBarEl.hidden = true;
+    userBarEl.innerHTML = "";
+    return;
+  }
+  userBarEl.hidden = false;
+  userBarEl.innerHTML = `
+    <span class="user-name">${escapeHtml(currentUser.username)} (${escapeHtml(currentUser.role)})</span>
+    ${currentUser.role === "admin" ? '<button type="button" data-user-action="admin">Admin</button>' : ""}
+    <button type="button" data-user-action="profile">Profile</button>
+    <button type="button" data-user-action="logout">Logout</button>
+  `;
+}
+
+function showApp(user) {
+  currentUser = user;
+  if (authViewEl) authViewEl.hidden = true;
+  if (settingsViewEl) settingsViewEl.hidden = true;
+  if (adminViewEl) adminViewEl.hidden = true;
+  if (mainEl) mainEl.hidden = false;
+  renderUserBar();
+  loadArchives();
+}
+
+function showAuth(message = "") {
+  currentUser = null;
+  if (mainEl) mainEl.hidden = true;
+  if (settingsViewEl) settingsViewEl.hidden = true;
+  if (adminViewEl) adminViewEl.hidden = true;
+  if (authViewEl) authViewEl.hidden = false;
+  renderUserBar();
+  setAuthMode(authMode);
+  authStatusEl.textContent = message;
+}
+
+function showSettings() {
+  if (!currentUser || !profileForm) return;
+  if (mainEl) mainEl.hidden = true;
+  if (adminViewEl) adminViewEl.hidden = true;
+  if (settingsViewEl) settingsViewEl.hidden = false;
+  profileForm.username.value = currentUser.username || "";
+  profileForm.email.value = currentUser.email || "";
+  profileForm.password.value = "";
+  profileStatusEl.textContent = "";
+}
+
+function renderAdminUsers(users) {
+  if (!adminUsersEl) return;
+  if (!users.length) {
+    adminUsersEl.innerHTML = '<p class="archive-empty">No users found.</p>';
+    return;
+  }
+  adminUsersEl.innerHTML = users
+    .map((u) => {
+      const id = escapeHtml(String(u.id));
+      return `<section class="admin-user" data-user-id="${id}">
+        <div class="admin-user-head">
+          <div>
+            <div class="admin-user-title">${escapeHtml(u.username)} <span class="admin-user-meta">(${escapeHtml(u.role)})</span></div>
+            <div class="admin-user-meta">${escapeHtml(u.email)} · ${escapeHtml(u.status)}</div>
+          </div>
+          <div class="admin-actions">
+            <button type="button" data-admin-status="active">Activate</button>
+            <button type="button" data-admin-status="pending">Pending</button>
+            <button type="button" data-admin-status="disabled">Disable</button>
+          </div>
+        </div>
+        <form class="form admin-edit-form">
+          <label>Username<input name="username" type="text" value="${escapeHtml(u.username)}" required /></label>
+          <label>Email<input name="email" type="email" value="${escapeHtml(u.email)}" required /></label>
+          <label>Password<input name="password" type="password" placeholder="Leave blank to keep current password" /></label>
+          <button type="submit" class="secondary-btn">Save user</button>
+        </form>
+      </section>`;
+    })
+    .join("");
+}
+
+async function loadAdminUsers() {
+  if (!adminStatusEl) return;
+  adminStatusEl.textContent = "Loading users…";
+  try {
+    const body = await apiJson("/api/admin/users");
+    renderAdminUsers(body.users || []);
+    adminStatusEl.textContent = `${body.users?.length ?? 0} users found.`;
+  } catch (e) {
+    adminStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function showAdminPanel() {
+  if (mainEl) mainEl.hidden = true;
+  if (settingsViewEl) settingsViewEl.hidden = true;
+  if (adminViewEl) adminViewEl.hidden = false;
+  await loadAdminUsers();
+}
+
 function renderArchives(searches) {
   if (!archiveListEl) return;
   if (!searches.length) {
@@ -375,4 +522,163 @@ archiveListEl?.addEventListener("click", (ev) => {
   loadArchivedSearch(btn.dataset.archiveId);
 });
 
-loadArchives();
+document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => setAuthMode(btn.dataset.authMode));
+});
+
+authForm?.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(authForm);
+  const password = String(fd.get("password") || "");
+  authStatusEl.textContent = "Working…";
+  try {
+    if (authMode === "login") {
+      const body = await apiJson("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          login: String(fd.get("login") || "").trim(),
+          password,
+        }),
+      });
+      showApp(body.user);
+    } else if (authMode === "register") {
+      const body = await apiJson("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username: String(fd.get("username") || "").trim(),
+          email: String(fd.get("email") || "").trim(),
+          password,
+        }),
+      });
+      if (body.pending) {
+        showAuth("Registration received. An admin must approve your account before login.");
+      } else {
+        showApp(body.user);
+      }
+    } else {
+      const email = String(fd.get("email") || "").trim();
+      const token = String(fd.get("token") || "").trim();
+      if (!token) {
+        const body = await apiJson("/api/auth/forgot-password", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+        authStatusEl.textContent = body.resetToken
+          ? `${body.message} Token: ${body.resetToken}`
+          : body.message;
+      } else {
+        await apiJson("/api/auth/reset-password", {
+          method: "POST",
+          body: JSON.stringify({ token, password }),
+        });
+        setAuthMode("login");
+        authStatusEl.textContent = "Password reset. Log in with your new password.";
+      }
+    }
+  } catch (e) {
+    authStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+});
+
+userBarEl?.addEventListener("click", async (ev) => {
+  const action = ev.target.closest("button")?.dataset.userAction;
+  if (!action) return;
+  if (action === "profile") {
+    showSettings();
+  } else if (action === "admin") {
+    showAdminPanel();
+  } else if (action === "logout") {
+    await apiJson("/api/auth/logout", { method: "POST" });
+    showAuth("Logged out.");
+  }
+});
+
+profileForm?.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(profileForm);
+  profileStatusEl.textContent = "Saving…";
+  try {
+    const body = await apiJson("/api/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify({
+        username: String(fd.get("username") || "").trim(),
+        email: String(fd.get("email") || "").trim(),
+        password: String(fd.get("password") || ""),
+      }),
+    });
+    currentUser = body.user;
+    renderUserBar();
+    profileForm.password.value = "";
+    profileStatusEl.textContent = "Settings saved.";
+  } catch (e) {
+    profileStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+});
+
+adminUsersEl?.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("button[data-admin-status]");
+  if (!btn || !adminUsersEl.contains(btn)) return;
+  const card = btn.closest("[data-user-id]");
+  const id = card?.dataset.userId;
+  const status = btn.dataset.adminStatus;
+  if (!id || !status) return;
+  adminStatusEl.textContent = "Updating status…";
+  try {
+    await apiJson(`/api/admin/users/${encodeURIComponent(id)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    });
+    await loadAdminUsers();
+  } catch (e) {
+    adminStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+});
+
+adminUsersEl?.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const formEl = ev.target.closest("form.admin-edit-form");
+  if (!formEl || !adminUsersEl.contains(formEl)) return;
+  const card = formEl.closest("[data-user-id]");
+  const id = card?.dataset.userId;
+  if (!id) return;
+  const fd = new FormData(formEl);
+  adminStatusEl.textContent = "Saving user…";
+  try {
+    await apiJson(`/api/admin/users/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        username: String(fd.get("username") || "").trim(),
+        email: String(fd.get("email") || "").trim(),
+        password: String(fd.get("password") || ""),
+      }),
+    });
+    await loadAdminUsers();
+  } catch (e) {
+    adminStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+});
+
+document.querySelectorAll("[data-panel-close]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (currentUser) showApp(currentUser);
+    else showAuth();
+  });
+});
+
+async function initAuth() {
+  try {
+    const body = await apiJson("/api/auth/me");
+    if (!body.authEnabled) {
+      if (authViewEl) authViewEl.hidden = true;
+      if (mainEl) mainEl.hidden = false;
+      loadArchives();
+      return;
+    }
+    if (body.user) showApp(body.user);
+    else showAuth("Log in or register to continue. First registered user becomes admin.");
+  } catch (e) {
+    showAuth(e instanceof Error ? e.message : String(e));
+  }
+}
+
+initAuth();

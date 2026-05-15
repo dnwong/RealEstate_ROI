@@ -181,6 +181,8 @@ body {
 }
 
 .form input[type="text"],
+.form input[type="email"],
+.form input[type="password"],
 .form input[type="number"],
 .form select {
   padding: 3px 6px;
@@ -213,6 +215,115 @@ body {
   outline-offset: 1px;
   border-color: var(--border-strong);
   box-shadow: none;
+}
+
+.auth-view,
+.settings-view,
+.admin-view {
+  width: 100%;
+  max-width: 760px;
+  margin: 12px auto;
+  padding: 0 8px;
+}
+
+.auth-card,
+.settings-card,
+.admin-card {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-title,
+.panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.auth-tabs,
+.user-bar,
+.panel-head,
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-head {
+  justify-content: space-between;
+}
+
+.auth-tabs button,
+.user-bar button,
+.admin-actions button {
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-tabs button.active,
+.auth-tabs button:hover,
+.user-bar button:hover,
+.admin-actions button:hover {
+  border-color: var(--accent);
+  background: var(--row-hover);
+}
+
+.user-bar {
+  justify-content: flex-end;
+}
+
+.user-name {
+  font-size: 12px;
+  color: #fff;
+}
+
+.settings-form {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-users {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-user {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.admin-user-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.admin-user-title {
+  font-weight: 700;
+}
+
+.admin-user-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-edit-form {
+  display: grid;
+  gap: 6px;
 }
 
 .check {

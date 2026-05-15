@@ -8,8 +8,13 @@
   </head>
   <body>
     <header class="header">
-      <p class="eyebrow">RealEstate ROI · local scrape</p>
-      <h1>Real Estate Sales vs Rental Comps</h1>
+      <div class="header-row">
+        <div>
+          <p class="eyebrow">RealEstate ROI · local scrape</p>
+          <h1>Real Estate Sales vs Rental Comps</h1>
+        </div>
+        <div id="userBar" class="user-bar" hidden></div>
+      </div>
       <p class="lede">
         Fetches Zillow for-sale and for-rent search results for an area, matches each
         sale to comparable rents (bedroom tier with fallbacks), and estimates gross
@@ -19,7 +24,84 @@
       </p>
     </header>
 
-    <main class="main">
+    <section id="authView" class="auth-view" hidden>
+      <div class="auth-card card">
+        <h2 id="authTitle" class="auth-title">Login</h2>
+        <div class="auth-tabs">
+          <button type="button" data-auth-mode="login" class="active">Login</button>
+          <button type="button" data-auth-mode="register">Register</button>
+          <button type="button" data-auth-mode="reset">Reset password</button>
+        </div>
+        <form id="authForm" class="form auth-form">
+          <label data-auth-field="login">
+            Username or email
+            <input name="login" type="text" autocomplete="username" />
+          </label>
+          <label data-auth-field="username" hidden>
+            Username
+            <input name="username" type="text" autocomplete="username" />
+          </label>
+          <label data-auth-field="email" hidden>
+            Email
+            <input name="email" type="email" autocomplete="email" />
+          </label>
+          <label data-auth-field="token" hidden>
+            Reset token
+            <input name="token" type="text" autocomplete="off" />
+          </label>
+          <label data-auth-field="password">
+            Password
+            <input name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button type="submit" class="submit-btn auth-submit">Login</button>
+          <p id="authStatus" class="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="settingsView" class="settings-view" hidden>
+      <div class="card settings-card">
+        <div class="panel-head">
+          <div>
+            <h2>User settings</h2>
+            <p class="meta">Update your username, email, or password.</p>
+          </div>
+          <button type="button" class="secondary-btn" data-panel-close>Back</button>
+        </div>
+        <form id="profileForm" class="form settings-form">
+          <label>
+            Username
+            <input name="username" type="text" autocomplete="username" required />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            New password
+            <input name="password" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password" />
+          </label>
+          <button type="submit" class="submit-btn">Save settings</button>
+          <p id="profileStatus" class="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="adminView" class="admin-view" hidden>
+      <div class="card admin-card">
+        <div class="panel-head">
+          <div>
+            <h2>Admin users</h2>
+            <p class="meta">Activate pending users, disable access, or edit account settings.</p>
+          </div>
+          <button type="button" class="secondary-btn" data-panel-close>Back</button>
+        </div>
+        <div id="adminStatus" class="status" aria-live="polite"></div>
+        <div id="adminUsers" class="admin-users"></div>
+      </div>
+    </section>
+
+    <main class="main" hidden>
       <form id="form" class="card form">
         <div class="form-grid">
           <fieldset class="fieldset">
