@@ -44,5 +44,9 @@ jobs:
         with:
           context: .
           push: true
+          no-cache: true
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            PLAYWRIGHT_VERSION=1.60.0
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

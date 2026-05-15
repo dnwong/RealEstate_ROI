@@ -2,6 +2,7 @@
 # After each GitHub Actions build, redeploy so Portainer pulls the new image.
 services:
   realestate-roi:
+    # Prefer the git SHA tag from Actions (avoids stale "latest"); e.g. ghcr.io/dnwong/realestate-roi:abc1234
     image: ghcr.io/dnwong/realestate-roi:latest
     pull_policy: always
     ports:

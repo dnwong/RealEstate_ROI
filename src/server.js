@@ -1,10 +1,28 @@
 #!/usr/bin/env node
 import express from "express";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { scrapeZillowListings } from "./zillowScrape.js";
 import { compareSalesToRentComps } from "./compare.js";
+
+function playwrightInfo() {
+  try {
+    const v = JSON.parse(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "playwright", "package.json"),
+        "utf8"
+      )
+    ).version;
+    return {
+      playwrightVersion: v,
+      browsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH || null,
+    };
+  } catch {
+    return { playwrightVersion: null, browsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH || null };
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
@@ -19,6 +37,10 @@ function parseZip(q) {
   const z = q.replace(/\D/g, "").slice(0, 5);
   return z.length === 5 ? z : null;
 }
+
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, ...playwrightInfo() });
+});
 
 app.get("/api/compare", async (req, res) => {
   const zip = parseZip(req.query.zip);
