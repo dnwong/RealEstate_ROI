@@ -67,7 +67,59 @@ function parseMoney(val) {
   return null;
 }
 
-function pickPrice(obj) {
+function isRentHistoryEvent(item) {
+  if (item == null || typeof item !== "object") return false;
+  const text = [
+    item.event,
+    item.eventName,
+    item.eventType,
+    item.priceChangeRate,
+    item.priceChangeType,
+    item.priceType,
+    item.source,
+    item.description,
+    item.text,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return /rent|rental|listed\s+for\s+rent|for\s+rent/i.test(text);
+}
+
+function pickRentPriceHistoryPrice(obj) {
+  const candidates = [
+    obj.priceHistory,
+    obj.homeInfo?.priceHistory,
+    obj.resoFacts?.priceHistory,
+    obj.hdpData?.homeInfo?.priceHistory,
+    obj.hdpData?.homeInfo?.homeInfo?.priceHistory,
+    obj.hdpData?.homeInfo?.resoFacts?.priceHistory,
+    obj.miniCardData?.priceHistory,
+  ];
+  for (const history of candidates) {
+    if (!Array.isArray(history)) continue;
+    for (const item of history) {
+      if (!isRentHistoryEvent(item)) continue;
+      const price =
+        parseMoney(item.price) ??
+        parseMoney(item.priceDisplay) ??
+        parseMoney(item.priceString) ??
+        parseMoney(item.value) ??
+        parseMoney(item.amount);
+      if (price != null && price > 0) return price;
+    }
+  }
+  return null;
+}
+
+function pickPrice(obj, listingType) {
+  if (listingType === "rent") {
+    const historyPrice = pickRentPriceHistoryPrice(obj);
+    if (historyPrice != null) {
+      obj.__priceSource = "priceHistory";
+      return historyPrice;
+    }
+  }
+  obj.__priceSource = "listing";
   const candidates = [
     obj.unformattedPrice,
     obj.unformattedRent,
@@ -206,6 +258,7 @@ function createListingRow(zpid, price, obj) {
   return {
     zpid,
     price,
+    priceSource: obj.__priceSource ?? "listing",
     bedrooms: pickBeds(obj),
     homeType: pickHomeType(obj),
     address,
@@ -216,7 +269,14 @@ function createListingRow(zpid, price, obj) {
   };
 }
 
-function enrichListingFromObj(row, obj) {
+function enrichListingFromObj(row, obj, listingType = "sale") {
+  if (listingType === "rent") {
+    const historyPrice = pickRentPriceHistoryPrice(obj);
+    if (historyPrice != null && row.priceSource !== "priceHistory") {
+      row.price = historyPrice;
+      row.priceSource = "priceHistory";
+    }
+  }
   if (row.bedrooms == null) {
     const b = pickBeds(obj);
     if (b != null) row.bedrooms = b;
@@ -261,14 +321,87 @@ function pickSqft(obj) {
   return null;
 }
 
+function normalizeYearBuilt(val) {
+  if (typeof val === "number" && Number.isFinite(val) && val > 1700) {
+    return Math.floor(val);
+  }
+  if (typeof val !== "string") return null;
+  const s = val.trim();
+  if (/^\d{4}$/.test(s)) return Number(s);
+  const m =
+    s.match(/\b(?:built|year\s*built|built\s*in)\D{0,20}((?:17|18|19|20)\d{2})\b/i) ??
+    s.match(/\b((?:17|18|19|20)\d{2})\b/i);
+  if (!m) return null;
+  const y = Number(m[1]);
+  return y > 1700 ? y : null;
+}
+
 function pickYearBuilt(obj) {
-  const y =
+  const direct =
     obj.yearBuilt ??
     obj.year_built ??
+    obj.builtYear ??
+    obj.buildYear ??
+    obj.constructionYear ??
+    obj.homeFacts?.yearBuilt ??
+    obj.resoFacts?.yearBuilt ??
+    obj.attributionInfo?.yearBuilt ??
     obj.hdpData?.homeInfo?.yearBuilt ??
-    obj.miniCardData?.yearBuilt;
-  if (typeof y === "number" && Number.isFinite(y) && y > 1700) return y;
-  if (typeof y === "string" && /^\d{4}$/.test(y)) return Number(y);
+    obj.hdpData?.homeInfo?.homeFacts?.yearBuilt ??
+    obj.hdpData?.homeInfo?.resoFacts?.yearBuilt ??
+    obj.miniCardData?.yearBuilt ??
+    obj.miniCardData?.homeFacts?.yearBuilt ??
+    obj.miniCardData?.resoFacts?.yearBuilt;
+  const directYear = normalizeYearBuilt(direct);
+  if (directYear != null) return directYear;
+
+  const queue = [
+    obj.facts,
+    obj.homeFacts,
+    obj.resoFacts,
+    obj.atAGlanceFacts,
+    obj.hdpData?.homeInfo?.facts,
+    obj.hdpData?.homeInfo?.homeFacts,
+    obj.hdpData?.homeInfo?.resoFacts,
+    obj.hdpData?.homeInfo?.atAGlanceFacts,
+    obj.miniCardData?.facts,
+    obj.miniCardData?.homeFacts,
+    obj.miniCardData?.resoFacts,
+  ].filter(Boolean);
+  const seen = new Set();
+  while (queue.length) {
+    const item = queue.shift();
+    if (item == null) continue;
+    if (typeof item === "string") {
+      const y = normalizeYearBuilt(item);
+      if (y != null && /built|year/i.test(item)) return y;
+      continue;
+    }
+    if (typeof item !== "object" || seen.has(item)) continue;
+    seen.add(item);
+    if (Array.isArray(item)) {
+      queue.push(...item);
+      continue;
+    }
+    const label = item.label ?? item.name ?? item.title ?? item.factLabel;
+    const value = item.value ?? item.factValue ?? item.displayValue;
+    if (typeof label === "string" && /built|construction|year/i.test(label)) {
+      const y = normalizeYearBuilt(value);
+      if (y != null) return y;
+    }
+    for (const [k, v] of Object.entries(item)) {
+      if (/built|construction|year/i.test(k)) {
+        const y = normalizeYearBuilt(v);
+        if (y != null) return y;
+      }
+      if (typeof v === "string" && /built|year/i.test(v)) {
+        const y = normalizeYearBuilt(v);
+        if (y != null) return y;
+      } else if (v && typeof v === "object") {
+        queue.push(v);
+      }
+    }
+  }
   return null;
 }
 
@@ -277,7 +410,7 @@ function pickYearBuilt(obj) {
  * @param {unknown} root
  * @param {number} limit
  */
-export function extractListingCards(root, limit) {
+export function extractListingCards(root, limit, listingType = "sale") {
   /** @type {Map<number, { zpid: number, price: number, bedrooms: number | null, homeType: string | null, address: string | null, streetAddress: string | null, sqft: number | null, photoUrl: string | null }>} */
   const byZpid = new Map();
   const seen = new Set();
@@ -301,9 +434,9 @@ export function extractListingCards(root, limit) {
     else if (typeof obj.zpid === "string" && /^\d+$/.test(obj.zpid)) zpid = Number(obj.zpid);
     if (zpid != null && zpid > 0) {
       const existing = byZpid.get(zpid);
-      const price = pickPrice(obj);
+      const price = pickPrice(obj, listingType);
       if (existing) {
-        enrichListingFromObj(existing, obj);
+        enrichListingFromObj(existing, obj, listingType);
       } else if (price != null) {
         byZpid.set(zpid, createListingRow(zpid, price, obj));
       }
@@ -320,8 +453,10 @@ export function extractListingCards(root, limit) {
 }
 
 function mergeListingDuplicates(a, b) {
-  const price =
-    typeof a.price === "number" && a.price > 0
+  const preferBPrice = a.priceSource !== "priceHistory" && b.priceSource === "priceHistory";
+  const price = preferBPrice
+    ? b.price
+    : typeof a.price === "number" && a.price > 0
       ? a.price
       : typeof b.price === "number" && b.price > 0
         ? b.price
@@ -329,6 +464,7 @@ function mergeListingDuplicates(a, b) {
   return {
     zpid: a.zpid,
     price,
+    priceSource: preferBPrice ? b.priceSource : a.priceSource ?? b.priceSource,
     bedrooms: a.bedrooms ?? b.bedrooms,
     homeType: a.homeType ?? b.homeType,
     address: a.address ?? b.address,
@@ -526,7 +662,7 @@ export async function scrapeZillowListings(opts) {
     /** @type {ReturnType<typeof extractListingCards>} */
     const merged = [];
     for (const root of roots) {
-      merged.push(...extractListingCards(root, cap));
+      merged.push(...extractListingCards(root, cap, listingType));
     }
 
     const listings = mergeListingsByZpid(merged, cap);
