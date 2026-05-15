@@ -298,6 +298,21 @@ form.addEventListener("submit", async (ev) => {
   const useChrome = fd.get("useChrome") === "on";
   const timeoutMs = fd.get("timeoutMs");
 
+  if (!zip && !city && !state) {
+    statusEl.textContent = "Enter a ZIP or select both city and state before searching.";
+    return;
+  }
+
+  if (!zip && city && !state) {
+    statusEl.textContent = "Select a state for the city search.";
+    return;
+  }
+
+  if (!zip && state && !city) {
+    statusEl.textContent = "Enter a city for the selected state.";
+    return;
+  }
+
   const params = new URLSearchParams();
   if (zip) params.set("zip", zip);
   if (city) params.set("city", city);
