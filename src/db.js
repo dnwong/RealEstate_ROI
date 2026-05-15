@@ -109,7 +109,7 @@ export async function getArchivedSearch(id) {
   if (!pool) return null;
   await initDb();
   const result = await pool.query(
-    `SELECT id, created_at, region, sale_url, rent_url, sale_count, rent_count, min_comps, prefer_type, rows
+    `SELECT id, created_at, region, sale_url, rent_url, sale_count, rent_count, min_comps, prefer_type, query, rows
      FROM archived_searches
      WHERE id = $1`,
     [id]

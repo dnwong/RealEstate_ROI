@@ -93,6 +93,11 @@ function renderTable(data) {
           <span class="stat-chip"><b>${data.rentCount}</b> rentals</span>
           <span class="stat-chip"><b>${data.minComps}</b> min comps</span>
           ${
+            data.maxAge != null
+              ? `<span class="stat-chip"><b>${escapeHtml(String(data.maxAge))}</b> max age</span>`
+              : ""
+          }
+          ${
             data.preferType
               ? '<span class="stat-chip"><b>Type</b> filter on</span>'
               : ""
@@ -112,6 +117,7 @@ function renderTable(data) {
               <th>Street</th>
               <th class="num">List</th>
               <th class="num">Beds</th>
+              <th class="num">Age</th>
               <th>Type</th>
               <th class="num">n</th>
               <th class="num">Rent med</th>
@@ -168,6 +174,7 @@ function renderTable(data) {
                   <td>${streetInner}</td>
                   <td class="num">${money(r.salePrice)}</td>
                   <td class="num">${r.saleBeds ?? "—"}</td>
+                  <td class="num">${r.saleAge ?? "—"}</td>
                   <td>${escapeHtml(String(r.saleType ?? "—"))}</td>
                   <td class="num">${r.compCount}</td>
                   <td class="num">${money(r.compRentMedian)}</td>
@@ -293,6 +300,7 @@ form.addEventListener("submit", async (ev) => {
   const state = (fd.get("state") || "").toString().trim();
   const limit = fd.get("limit");
   const minComps = fd.get("minComps");
+  const maxAge = fd.get("maxAge");
   const preferType = fd.get("preferType") === "on" ? "1" : "";
   const headed = fd.get("headed") === "on" ? "1" : "";
   const useChrome = fd.get("useChrome") === "on";
@@ -319,6 +327,7 @@ form.addEventListener("submit", async (ev) => {
   if (state) params.set("state", state);
   if (limit) params.set("limit", String(limit));
   if (minComps) params.set("minComps", String(minComps));
+  if (maxAge) params.set("maxAge", String(maxAge));
   if (preferType) params.set("preferType", preferType);
   if (headed) params.set("headed", headed);
   if (!useChrome) params.set("useChrome", "0");

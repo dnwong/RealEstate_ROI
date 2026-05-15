@@ -98,6 +98,7 @@ app.get("/api/archives/:id", async (req, res) => {
       rentCount: archived.rent_count,
       minComps: archived.min_comps,
       preferType: archived.prefer_type,
+      maxAge: archived.query?.maxAge ?? null,
       rows: archived.rows,
     });
   } catch (e) {
@@ -127,6 +128,10 @@ app.get("/api/compare", async (req, res) => {
   const timeoutMs = Number.isFinite(timeoutRaw)
     ? Math.min(120000, Math.max(15000, timeoutRaw))
     : 90000;
+  const maxAgeRaw = Number(req.query.maxAge);
+  const maxAge = Number.isFinite(maxAgeRaw)
+    ? Math.min(300, Math.max(0, maxAgeRaw))
+    : null;
 
   if (!zip && !(city && state)) {
     res.status(400).json({
@@ -151,20 +156,32 @@ app.get("/api/compare", async (req, res) => {
       scrapeZillowListings({ ...scrapeOpts, listingType: "rent" }),
     ]);
 
-    if (!salePage.listings.length || !rentPage.listings.length) {
+    const currentYear = new Date().getFullYear();
+    const saleListings = maxAge == null
+      ? salePage.listings
+      : salePage.listings.filter(
+          (l) =>
+            l.yearBuilt != null &&
+            Number.isFinite(l.yearBuilt) &&
+            Math.max(0, currentYear - l.yearBuilt) <= maxAge
+        );
+
+    if (!saleListings.length || !rentPage.listings.length) {
       res.status(422).json({
         error:
-          "Not enough listings parsed (sale and/or rent empty). Zillow may be blocking automation—try the web form option “Show browser (headed)”, install Google Chrome, or run the CLI with --headed.",
+          maxAge == null
+            ? "Not enough listings parsed (sale and/or rent empty). Zillow may be blocking automation—try the web form option “Show browser (headed)”, install Google Chrome, or run the CLI with --headed."
+            : "No sale listings matched the max home age filter. Try increasing max age or leaving it blank.",
         saleUrl: salePage.url,
         rentUrl: rentPage.url,
-        saleCount: salePage.listings.length,
+        saleCount: saleListings.length,
         rentCount: rentPage.listings.length,
       });
       return;
     }
 
     const rows = compareSalesToRentComps(
-      salePage.listings,
+      saleListings,
       rentPage.listings,
       { minComps, preferType }
     );
@@ -173,10 +190,11 @@ app.get("/api/compare", async (req, res) => {
       region: zip ? `ZIP ${zip}` : `${city}, ${state}`,
       saleUrl: salePage.url,
       rentUrl: rentPage.url,
-      saleCount: salePage.listings.length,
+      saleCount: saleListings.length,
       rentCount: rentPage.listings.length,
       minComps,
       preferType,
+      maxAge,
       rows,
     };
 
@@ -185,8 +203,8 @@ app.get("/api/compare", async (req, res) => {
       zip,
       city: city || null,
       state: state || null,
-      query: { zip, city: city || null, state: state || null, limit, minComps, preferType },
-      saleListings: salePage.listings,
+      query: { zip, city: city || null, state: state || null, limit, minComps, preferType, maxAge },
+      saleListings,
       rentListings: rentPage.listings,
     });
 

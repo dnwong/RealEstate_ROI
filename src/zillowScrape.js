@@ -211,6 +211,7 @@ function createListingRow(zpid, price, obj) {
     address,
     streetAddress: street,
     sqft: pickSqft(obj),
+    yearBuilt: pickYearBuilt(obj),
     photoUrl: pickPhotoUrl(obj),
   };
 }
@@ -235,6 +236,10 @@ function enrichListingFromObj(row, obj) {
     const sq = pickSqft(obj);
     if (sq != null) row.sqft = sq;
   }
+  if (row.yearBuilt == null) {
+    const y = pickYearBuilt(obj);
+    if (y != null) row.yearBuilt = y;
+  }
   if (row.photoUrl == null) {
     const p = pickPhotoUrl(obj);
     if (p) row.photoUrl = p;
@@ -253,6 +258,17 @@ function pickSqft(obj) {
     obj.miniCardData?.livingArea;
   if (typeof s === "number" && Number.isFinite(s) && s > 0) return s;
   if (typeof s === "string" && /^\d+$/.test(s)) return Number(s);
+  return null;
+}
+
+function pickYearBuilt(obj) {
+  const y =
+    obj.yearBuilt ??
+    obj.year_built ??
+    obj.hdpData?.homeInfo?.yearBuilt ??
+    obj.miniCardData?.yearBuilt;
+  if (typeof y === "number" && Number.isFinite(y) && y > 1700) return y;
+  if (typeof y === "string" && /^\d{4}$/.test(y)) return Number(y);
   return null;
 }
 
@@ -318,6 +334,7 @@ function mergeListingDuplicates(a, b) {
     address: a.address ?? b.address,
     streetAddress: a.streetAddress ?? b.streetAddress,
     sqft: a.sqft ?? b.sqft,
+    yearBuilt: a.yearBuilt ?? b.yearBuilt,
     photoUrl: a.photoUrl ?? b.photoUrl,
   };
 }

@@ -11,6 +11,7 @@ import { mean, median } from "./stats.js";
 export function compareSalesToRentComps(sales, rentals, options = {}) {
   const minComps = options.minComps ?? 3;
   const preferType = Boolean(options.preferType);
+  const currentYear = new Date().getFullYear();
 
   const rentPool = rentals.filter((r) => typeof r.price === "number" && r.price > 0);
   const saleRows = sales.filter((s) => typeof s.price === "number" && s.price > 0);
@@ -87,6 +88,11 @@ export function compareSalesToRentComps(sales, rentals, options = {}) {
       salePrice: sale.price,
       saleBeds: sale.bedrooms,
       saleSqft: sale.sqft ?? null,
+      saleYearBuilt: sale.yearBuilt ?? null,
+      saleAge:
+        sale.yearBuilt != null && Number.isFinite(sale.yearBuilt)
+          ? Math.max(0, currentYear - sale.yearBuilt)
+          : null,
       saleType: sale.homeType,
       compCount: rentPrices.length,
       matchTier,
