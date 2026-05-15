@@ -267,12 +267,14 @@ function setAuthMode(mode) {
   authForm.resetStep.value = resetPasswordStep;
   authForm.querySelectorAll("[data-auth-field]").forEach((el) => {
     const field = el.dataset.authField;
-    el.hidden =
+    const hidden =
       (field === "login" && mode !== "login") ||
       (field === "username" && mode !== "register") ||
       (field === "email" && mode !== "register" && mode !== "reset") ||
       (field === "token" && (mode !== "reset" || resetPasswordStep !== "confirm")) ||
       (field === "password" && mode === "reset" && resetPasswordStep !== "confirm");
+    el.hidden = hidden;
+    el.style.display = hidden ? "none" : "";
   });
   document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.authMode === mode);
@@ -287,7 +289,9 @@ function showResetConfirm(message) {
   authForm.querySelector(".auth-submit").textContent = "Reset password";
   authForm.querySelectorAll("[data-auth-field]").forEach((el) => {
     const field = el.dataset.authField;
-    el.hidden = !["email", "token", "password"].includes(field);
+    const hidden = !["email", "token", "password"].includes(field);
+    el.hidden = hidden;
+    el.style.display = hidden ? "none" : "";
   });
   authStatusEl.textContent = message;
 }
