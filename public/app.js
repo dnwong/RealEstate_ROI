@@ -19,6 +19,7 @@ const adminStatusEl = document.getElementById("adminStatus");
 const adminUsersEl = document.getElementById("adminUsers");
 let currentUser = null;
 let authMode = "login";
+let resetPasswordStep = "request";
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -258,22 +259,37 @@ async function apiJson(url, options = {}) {
 
 function setAuthMode(mode) {
   authMode = mode;
+  resetPasswordStep = "request";
   authTitleEl.textContent =
     mode === "register" ? "Register" : mode === "reset" ? "Reset password" : "Login";
   authForm.querySelector(".auth-submit").textContent =
-    mode === "register" ? "Register" : mode === "reset" ? "Reset password" : "Login";
+    mode === "register" ? "Register" : mode === "reset" ? "Send reset token" : "Login";
+  authForm.resetStep.value = resetPasswordStep;
   authForm.querySelectorAll("[data-auth-field]").forEach((el) => {
     const field = el.dataset.authField;
     el.hidden =
       (field === "login" && mode !== "login") ||
       (field === "username" && mode !== "register") ||
-      (field === "email" && mode === "login") ||
-      (field === "token" && mode !== "reset");
+      (field === "email" && mode !== "register" && mode !== "reset") ||
+      (field === "token" && (mode !== "reset" || resetPasswordStep !== "confirm")) ||
+      (field === "password" && mode === "reset" && resetPasswordStep !== "confirm");
   });
   document.querySelectorAll("[data-auth-mode]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.authMode === mode);
   });
   authStatusEl.textContent = "";
+}
+
+function showResetConfirm(message) {
+  resetPasswordStep = "confirm";
+  authForm.resetStep.value = resetPasswordStep;
+  authTitleEl.textContent = "Enter reset token";
+  authForm.querySelector(".auth-submit").textContent = "Reset password";
+  authForm.querySelectorAll("[data-auth-field]").forEach((el) => {
+    const field = el.dataset.authField;
+    el.hidden = !["email", "token", "password"].includes(field);
+  });
+  authStatusEl.textContent = message;
 }
 
 function renderUserBar() {
@@ -558,14 +574,14 @@ authForm?.addEventListener("submit", async (ev) => {
     } else {
       const email = String(fd.get("email") || "").trim();
       const token = String(fd.get("token") || "").trim();
-      if (!token) {
+      if (resetPasswordStep === "request") {
         const body = await apiJson("/api/auth/forgot-password", {
           method: "POST",
           body: JSON.stringify({ email }),
         });
-        authStatusEl.textContent = body.resetToken
+        showResetConfirm(body.resetToken
           ? `${body.message} Token: ${body.resetToken}`
-          : body.message;
+          : body.message);
       } else {
         await apiJson("/api/auth/reset-password", {
           method: "POST",
