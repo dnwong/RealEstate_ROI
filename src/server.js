@@ -19,6 +19,7 @@ import {
   getUserByUsernameOrEmail,
   initDb,
   isArchiveEnabled,
+  isFirstAdminUser,
   listUsers,
   listArchivedSearches,
   resetPasswordWithToken,
@@ -337,6 +338,10 @@ app.post("/api/admin/users/:id/status", requireAdmin, async (req, res) => {
   const status = String(req.body?.status || "");
   if (!Number.isSafeInteger(id) || !["active", "pending", "disabled"].includes(status)) {
     res.status(400).json({ error: "Invalid user or status." });
+    return;
+  }
+  if (status !== "active" && await isFirstAdminUser(id)) {
+    res.status(400).json({ error: "The first admin user cannot be disabled or set to pending." });
     return;
   }
   const user = await updateUserStatus(id, status);

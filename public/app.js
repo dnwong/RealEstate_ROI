@@ -353,16 +353,18 @@ function renderAdminUsers(users) {
   adminUsersEl.innerHTML = users
     .map((u) => {
       const id = escapeHtml(String(u.id));
+      const protectedAttr = u.is_first_admin ? " disabled title=\"The first admin user cannot be disabled or set to pending\"" : "";
+      const protectedLabel = u.is_first_admin ? " · protected first admin" : "";
       return `<section class="admin-user" data-user-id="${id}">
         <div class="admin-user-head">
           <div>
             <div class="admin-user-title">${escapeHtml(u.username)} <span class="admin-user-meta">(${escapeHtml(u.role)})</span></div>
-            <div class="admin-user-meta">${escapeHtml(u.email)} · ${escapeHtml(u.status)}</div>
+            <div class="admin-user-meta">${escapeHtml(u.email)} · ${escapeHtml(u.status)}${protectedLabel}</div>
           </div>
           <div class="admin-actions">
             <button type="button" data-admin-status="active">Activate</button>
-            <button type="button" data-admin-status="pending">Pending</button>
-            <button type="button" data-admin-status="disabled">Disable</button>
+            <button type="button" data-admin-status="pending"${protectedAttr}>Pending</button>
+            <button type="button" data-admin-status="disabled"${protectedAttr}>Disable</button>
           </div>
         </div>
         <form class="form admin-edit-form">

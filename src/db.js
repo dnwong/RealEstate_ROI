@@ -185,11 +185,33 @@ export async function listUsers() {
   if (!pool) return [];
   await initDb();
   const result = await pool.query(
-    `SELECT id, created_at, username, email, role, status
+    `WITH first_admin AS (
+       SELECT id
+       FROM users
+       WHERE role = 'admin'
+       ORDER BY created_at ASC, id ASC
+       LIMIT 1
+     )
+     SELECT users.id, users.created_at, users.username, users.email, users.role, users.status,
+            users.id = first_admin.id AS is_first_admin
      FROM users
+     LEFT JOIN first_admin ON true
      ORDER BY created_at DESC`
   );
   return result.rows;
+}
+
+export async function isFirstAdminUser(id) {
+  if (!pool) return false;
+  await initDb();
+  const result = await pool.query(
+    `SELECT id
+     FROM users
+     WHERE role = 'admin'
+     ORDER BY created_at ASC, id ASC
+     LIMIT 1`
+  );
+  return Number(result.rows[0]?.id) === Number(id);
 }
 
 export async function updateUserStatus(id, status) {
