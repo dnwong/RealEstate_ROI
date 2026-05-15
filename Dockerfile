@@ -1,16 +1,22 @@
-# Playwright base image includes Chromium + OS deps (must match package-lock playwright version)
+# Playwright OS deps + browser path; tag MUST match package.json "playwright" version.
 FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV PORT=3000
+# Browsers ship in the base image under /ms-playwright; npm package must match the tag above.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev \
+  && node -e "const v=require('playwright/package.json').version; if(v!=='1.60.0'){console.error('playwright',v,'!= 1.60.0'); process.exit(1)}" \
+  && npx playwright install chromium
 
 COPY . .
+
+LABEL org.opencontainers.image.title="realestate-roi" \
+  org.opencontainers.image.playwright="1.60.0"
 
 EXPOSE 3000
 

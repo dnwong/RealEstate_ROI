@@ -1,14 +1,9 @@
-# Pull pre-built image from GitHub Container Registry (after Actions build succeeds).
-# Portainer: Stacks → Add stack → paste this file.
-#
-# Image URL (must be lowercase):
-#   ghcr.io/dnwong/realestate-roi:latest
-#
-# If you previously used dnwong/RealEstate_ROI or realestate_roi, that causes "manifest unknown".
-
+# Portainer: Stacks → Add stack → Web editor → paste this file.
+# After each GitHub Actions build, redeploy so Portainer pulls the new image.
 services:
   realestate-roi:
     image: ghcr.io/dnwong/realestate-roi:latest
+    pull_policy: always
     ports:
       - "3000:3000"
     environment:

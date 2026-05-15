@@ -1,10 +1,10 @@
-# Portainer: add stack → paste this file, set repo URL or upload compose.
+# Local build (optional). For Portainer/GHCR use docker-compose.ghcr.yml instead.
 services:
   realestate-roi:
     build:
       context: .
       dockerfile: Dockerfile
-    image: realestate-roi:latest
+    image: realestate-roi:local
     ports:
       - "3000:3000"
     environment:
