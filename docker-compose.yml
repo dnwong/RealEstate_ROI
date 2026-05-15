@@ -1,0 +1,16 @@
+# Portainer: add stack → paste this file, set repo URL or upload compose.
+services:
+  realestate-roi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realestate-roi:latest
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      NODE_ENV: production
+    shm_size: "1gb"
+    init: true
+    restart: unless-stopped

@@ -1,0 +1,22 @@
+{
+  "name": "realestate-roi",
+  "version": "1.0.0",
+  "description": "Regional Zillow sale/rent scrape (Playwright) and gross rental yield for testing.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "realestate-roi": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "roi": "node src/cli.js",
+    "web": "node src/server.js",
+    "install-browser": "playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "playwright": "^1.52.0"
+  }
+}

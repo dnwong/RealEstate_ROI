@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sale vs rent comps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <p class="eyebrow">RealEstate ROI · local scrape</p>
+      <h1>Sale listings vs rental comps</h1>
+      <p class="lede">
+        Fetches Zillow for-sale and for-rent search results for an area, matches each
+        sale to comparable rents (bedroom tier with fallbacks), and estimates gross
+        yield using comp rent medians. Zillow often blocks headless automation—use
+        <strong>Show browser (headed)</strong> on your PC if you see “Access denied”.
+        For local testing only; respect Zillow’s terms.
+      </p>
+    </header>
+
+    <main class="main">
+      <form id="form" class="card form">
+        <div class="form-grid">
+          <fieldset class="fieldset">
+          <legend>Location</legend>
+          <label class="field-compact field-compact-zip">
+            ZIP
+            <input name="zip" type="text" inputmode="numeric" maxlength="10" placeholder="78754" />
+          </label>
+          <span class="or">or</span>
+          <label>
+            City
+            <input name="city" type="text" placeholder="Austin" />
+          </label>
+          <label>
+            State
+            <input name="state" type="text" maxlength="2" placeholder="TX" />
+          </label>
+          </fieldset>
+          <fieldset class="fieldset">
+          <legend>Options</legend>
+          <label class="field-compact">
+            Max listings per side
+            <input name="limit" type="number" min="10" max="300" value="100" />
+          </label>
+          <label class="field-compact">
+            Min comps before widening bedroom match
+            <input name="minComps" type="number" min="1" max="20" value="3" />
+          </label>
+          <label class="check">
+            <input name="preferType" type="checkbox" />
+            Prefer same property-type wording when enough comps
+          </label>
+          <label class="check">
+            <input name="headed" type="checkbox" />
+            Show browser (headed) — complete cookie/captcha in the window if needed
+          </label>
+          <label class="check">
+            <input name="useChrome" type="checkbox" checked />
+            Use installed Google Chrome (recommended; uncheck to use Playwright Chromium only)
+          </label>
+          <label class="field-compact">
+            Timeout (ms)
+            <input name="timeoutMs" type="number" min="15000" max="120000" value="90000" />
+          </label>
+          </fieldset>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="submit" class="submit-btn">
+            <span class="submit-label">Run comparison</span>
+            <span class="submit-spinner" aria-hidden="true"></span>
+          </button>
+          <p id="status" class="status" aria-live="polite"></p>
+        </div>
+      </form>
+
+      <section id="results" class="results hidden" hidden></section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
