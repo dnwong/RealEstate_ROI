@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { scrapeZillowListings } from "./zillowScrape.js";
 import { compareSalesToRentComps } from "./compare.js";
 import {
+  deleteArchivedSearches,
   getArchivedSearch,
   createUser,
   getUserById,
@@ -54,7 +55,61 @@ app.disable("x-powered-by");
 app.use(express.json());
 
 const buildId = process.env.BUILD_ID || process.env.GITHUB_SHA || "local";
-const sessionSecret = process.env.SESSION_SECRET || process.env.AUTH_SECRET || "dev-session-secret-change-me";
+const cookieName = "roi_session";
+const sessionSecret = process.env.SESSION_SECRET || process.env.AUTH_SECRET || "dev-change-me";
+const stateNames = {
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming",
+  DC: "District of Columbia",
+};
 
 function base64url(s) {
   return Buffer.from(s).toString("base64url");
@@ -171,6 +226,46 @@ function parseZip(q) {
   if (!q || typeof q !== "string") return null;
   const z = q.replace(/\D/g, "").slice(0, 5);
   return z.length === 5 ? z : null;
+}
+
+async function validateCityState(city, state) {
+  if (!city || !stateNames[state]) return false;
+  const params = new URLSearchParams({
+    city,
+    state: stateNames[state],
+    country: "United States",
+    format: "jsonv2",
+    limit: "5",
+    addressdetails: "1",
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "RealEstate_ROI/1.0 address validation",
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) return false;
+    const matches = await res.json();
+    return Array.isArray(matches) && matches.some((match) => {
+      const address = match?.address || {};
+      const matchedCity = address.city || address.town || address.village || address.hamlet || address.municipality;
+      const matchedState = address.state;
+      const country = address.country_code;
+      return (
+        country === "us" &&
+        String(matchedCity || "").toLowerCase() === city.toLowerCase() &&
+        String(matchedState || "").toLowerCase() === stateNames[state].toLowerCase()
+      );
+    });
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function healthPayload() {
@@ -418,6 +513,26 @@ app.get("/api/archives", requireUser, async (req, res) => {
   }
 });
 
+app.delete("/api/archives", requireUser, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids
+          .map((id) => Number(id))
+          .filter((id) => Number.isSafeInteger(id) && id > 0)
+      : [];
+    const uniqueIds = [...new Set(ids)];
+    if (!uniqueIds.length) {
+      res.status(400).json({ error: "Select at least one archive to delete." });
+      return;
+    }
+    const deletedCount = await deleteArchivedSearches(uniqueIds);
+    res.json({ deletedCount });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ error: msg });
+  }
+});
+
 app.get("/api/archives/:id", requireUser, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -479,6 +594,14 @@ app.get("/api/compare", requireUser, async (req, res) => {
     res.status(400).json({
       error: "Provide zip (5 digits) or both city and state (e.g. state=TX).",
     });
+    return;
+  }
+  if (!zip && !stateNames[state]) {
+    res.status(400).json({ error: "Select a valid state." });
+    return;
+  }
+  if (!zip && !await validateCityState(city, state)) {
+    res.status(400).json({ error: `Could not validate ${city}, ${state} as a valid US city/state.` });
     return;
   }
 

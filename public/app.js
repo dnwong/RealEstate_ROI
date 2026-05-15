@@ -5,6 +5,7 @@ const submitBtn = document.getElementById("submit");
 const archiveStatusEl = document.getElementById("archiveStatus");
 const archiveListEl = document.getElementById("archiveList");
 const refreshArchivesBtn = document.getElementById("refreshArchives");
+const deleteArchivesBtn = document.getElementById("deleteArchives");
 const mainEl = document.querySelector(".main");
 const authViewEl = document.getElementById("authView");
 const authForm = document.getElementById("authForm");
@@ -20,6 +21,7 @@ const adminUsersEl = document.getElementById("adminUsers");
 let currentUser = null;
 let authMode = "login";
 let resetPasswordStep = "request";
+let selectedArchiveIds = new Set();
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -399,6 +401,8 @@ async function showAdminPanel() {
 
 function renderArchives(searches) {
   if (!archiveListEl) return;
+  selectedArchiveIds = new Set([...selectedArchiveIds].filter((id) => searches.some((s) => String(s.id) === id)));
+  updateDeleteArchivesButton();
   if (!searches.length) {
     archiveListEl.innerHTML = '<p class="archive-empty">No archived searches yet.</p>';
     return;
@@ -406,16 +410,32 @@ function renderArchives(searches) {
   archiveListEl.innerHTML = searches
     .map((s) => {
       const id = escapeHtml(String(s.id));
+      const rawId = String(s.id);
+      const checked = selectedArchiveIds.has(rawId) ? " checked" : "";
       const rowCount = Number(s.row_count ?? 0);
-      return `<button type="button" class="archive-item" data-archive-id="${id}">
-        <span class="archive-item-main">
-          <span class="archive-item-region">${escapeHtml(String(s.region))}</span>
-          <span class="archive-item-date">${escapeHtml(dateTime(s.created_at))}</span>
-        </span>
-        <span class="archive-item-meta">${rowCount} rows · ${s.sale_count} sales · ${s.rent_count} rentals</span>
-      </button>`;
+      return `<div class="archive-item" data-archive-id="${id}">
+        <label class="archive-select">
+          <input type="checkbox" class="archive-checkbox" data-archive-id="${id}"${checked} />
+          <span class="sr-only">Select archive</span>
+        </label>
+        <button type="button" class="archive-load" data-archive-id="${id}">
+          <span class="archive-item-main">
+            <span class="archive-item-region">${escapeHtml(String(s.region))}</span>
+            <span class="archive-item-date">${escapeHtml(dateTime(s.created_at))}</span>
+          </span>
+          <span class="archive-item-meta">${rowCount} rows · ${s.sale_count} sales · ${s.rent_count} rentals</span>
+        </button>
+      </div>`;
     })
     .join("");
+}
+
+function updateDeleteArchivesButton() {
+  if (!deleteArchivesBtn) return;
+  deleteArchivesBtn.disabled = selectedArchiveIds.size === 0;
+  deleteArchivesBtn.textContent = selectedArchiveIds.size
+    ? `Delete selected (${selectedArchiveIds.size})`
+    : "Delete selected";
 }
 
 async function loadArchives() {
@@ -432,6 +452,8 @@ async function loadArchives() {
     }
     if (!body.archiveEnabled) {
       archiveStatusEl.textContent = "Archives are disabled. Set DATABASE_URL to enable Postgres archive storage.";
+      selectedArchiveIds.clear();
+      updateDeleteArchivesButton();
       renderArchives([]);
       return;
     }
@@ -439,6 +461,37 @@ async function loadArchives() {
     renderArchives(body.searches || []);
   } catch (e) {
     archiveStatusEl.textContent = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function deleteSelectedArchives() {
+  if (!archiveStatusEl || !selectedArchiveIds.size) return;
+  const ids = [...selectedArchiveIds];
+  const confirmed = window.confirm(`Delete ${ids.length} selected archived search${ids.length === 1 ? "" : "es"}? This cannot be undone.`);
+  if (!confirmed) return;
+  archiveStatusEl.textContent = "Deleting selected archives…";
+  if (deleteArchivesBtn) deleteArchivesBtn.disabled = true;
+  try {
+    const res = await fetch("/api/archives", {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ids }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      archiveStatusEl.textContent = body.error || `Archive delete failed (${res.status})`;
+      updateDeleteArchivesButton();
+      return;
+    }
+    selectedArchiveIds.clear();
+    archiveStatusEl.textContent = `Deleted ${body.deletedCount ?? 0} archived search${body.deletedCount === 1 ? "" : "es"}.`;
+    await loadArchives();
+  } catch (e) {
+    archiveStatusEl.textContent = e instanceof Error ? e.message : String(e);
+    updateDeleteArchivesButton();
   }
 }
 
@@ -538,8 +591,22 @@ refreshArchivesBtn?.addEventListener("click", () => {
   loadArchives();
 });
 
+deleteArchivesBtn?.addEventListener("click", () => {
+  deleteSelectedArchives();
+});
+
 archiveListEl?.addEventListener("click", (ev) => {
-  const btn = ev.target.closest("button.archive-item");
+  const checkbox = ev.target.closest("input.archive-checkbox");
+  if (checkbox && archiveListEl.contains(checkbox)) {
+    if (checkbox.checked) {
+      selectedArchiveIds.add(checkbox.dataset.archiveId);
+    } else {
+      selectedArchiveIds.delete(checkbox.dataset.archiveId);
+    }
+    updateDeleteArchivesButton();
+    return;
+  }
+  const btn = ev.target.closest("button.archive-load");
   if (!btn || !archiveListEl.contains(btn)) return;
   loadArchivedSearch(btn.dataset.archiveId);
 });

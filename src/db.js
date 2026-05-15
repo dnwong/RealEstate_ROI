@@ -130,6 +130,18 @@ export async function getArchivedSearch(id) {
   return result.rows[0] ?? null;
 }
 
+export async function deleteArchivedSearches(ids) {
+  if (!pool) return 0;
+  await initDb();
+  const result = await pool.query(
+    `DELETE FROM archived_searches
+     WHERE id = ANY($1::bigint[])
+     RETURNING id`,
+    [ids]
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function userCount() {
   if (!pool) return 0;
   await initDb();

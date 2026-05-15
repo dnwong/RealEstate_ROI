@@ -453,6 +453,11 @@ body {
   gap: 8px;
 }
 
+.archive-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .archive-title {
   margin: 0;
   font-size: 13px;
@@ -485,6 +490,19 @@ body {
   border-color: var(--accent);
 }
 
+.secondary-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.danger-btn {
+  color: #b42318;
+}
+
+.danger-btn:hover:not(:disabled) {
+  border-color: #d92d20;
+}
+
 .archive-status {
   margin-top: 6px;
 }
@@ -498,7 +516,6 @@ body {
 .archive-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
   padding: 5px 8px;
@@ -508,12 +525,31 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   text-align: left;
-  cursor: pointer;
 }
 
 .archive-item:hover {
   border-color: var(--link);
   background: var(--row-hover);
+}
+
+.archive-select {
+  display: inline-flex;
+  align-items: center;
+}
+
+.archive-load {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .archive-item-main {
