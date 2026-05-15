@@ -1,5 +1,12 @@
+import { existsSync } from "node:fs";
 import { chromium } from "playwright";
 import { buildZillowSearchUrl } from "./zillowUrls.js";
+
+function isDockerRuntime() {
+  return (
+    process.env.PLAYWRIGHT_IN_DOCKER === "1" || existsSync("/.dockerenv")
+  );
+}
 
 const SEC_CH_UA =
   '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"';
@@ -373,8 +380,9 @@ export async function scrapeZillowListings(opts) {
     headed = false,
     timeoutMs = 60000,
   } = opts;
-  const tryChrome =
-    opts.useChromeChannel !== undefined
+  const tryChrome = isDockerRuntime()
+    ? false
+    : opts.useChromeChannel !== undefined
       ? Boolean(opts.useChromeChannel)
       : process.env.ZILLOW_USE_CHROME !== "0";
   const url = buildZillowSearchUrl({ listingType, zip, city, state });

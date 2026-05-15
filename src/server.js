@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import express from "express";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -39,7 +39,9 @@ function parseZip(q) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, ...playwrightInfo() });
+  const inDocker =
+    process.env.PLAYWRIGHT_IN_DOCKER === "1" || existsSync("/.dockerenv");
+  res.json({ ok: true, inDocker, ...playwrightInfo() });
 });
 
 app.get("/api/compare", async (req, res) => {
@@ -56,7 +58,9 @@ app.get("/api/compare", async (req, res) => {
     : 3;
   const preferType = String(req.query.preferType || "") === "1";
   const headed = String(req.query.headed || "") === "1";
-  const useChrome = req.query.useChrome !== "0";
+  const inDocker =
+    process.env.PLAYWRIGHT_IN_DOCKER === "1" || existsSync("/.dockerenv");
+  const useChrome = !inDocker && req.query.useChrome !== "0";
   const timeoutRaw = Number(req.query.timeoutMs);
   const timeoutMs = Number.isFinite(timeoutRaw)
     ? Math.min(120000, Math.max(15000, timeoutRaw))

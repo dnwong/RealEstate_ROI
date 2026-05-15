@@ -1,32 +1,30 @@
-# OS libraries from Playwright image; browsers live in /app/browsers (not base /ms-playwright).
-ARG PLAYWRIGHT_VERSION=1.60.0
-FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-jammy
+# Node + `playwright install --with-deps` (no Playwright base image — avoids /ms-playwright version mismatch).
+FROM node:22-bookworm
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV PLAYWRIGHT_BROWSERS_PATH=/app/browsers
+ENV HOST=0.0.0.0
+ENV PLAYWRIGHT_IN_DOCKER=1
 
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 COPY scripts/verify-playwright.mjs scripts/verify-playwright.mjs
 
 ARG GITHUB_SHA=dev
 RUN npm ci --omit=dev \
-  && node -e "const v=require('playwright/package.json').version; if(v!=='1.60.0') throw new Error('playwright '+v+' != 1.60.0')" \
-  && mkdir -p /app/browsers \
-  && npx playwright install chromium \
+  && npx playwright install --with-deps chromium \
   && node scripts/verify-playwright.mjs
 
 COPY . .
 
 LABEL org.opencontainers.image.title="realestate-roi" \
-  org.opencontainers.image.playwright="${PLAYWRIGHT_VERSION}" \
+  org.opencontainers.image.playwright="1.60.0" \
   org.opencontainers.image.revision="${GITHUB_SHA}"
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>process.exit(r.statusCode===200&&d.includes('playwrightVersion')?0:1))}).on('error',()=>process.exit(1))"
 
 CMD ["node", "src/server.js"]
