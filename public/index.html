@@ -220,7 +220,10 @@
             <h2 id="archive-title" class="archive-title">Archived searches</h2>
             <p class="archive-copy">Load previous search results by date and searched location.</p>
           </div>
-          <button type="button" id="refreshArchives" class="secondary-btn">Refresh</button>
+          <div class="archive-actions">
+            <button type="button" id="deleteArchives" class="secondary-btn danger-btn" disabled>Delete selected</button>
+            <button type="button" id="refreshArchives" class="secondary-btn">Refresh</button>
+          </div>
         </div>
         <div id="archiveStatus" class="archive-status meta" aria-live="polite"></div>
         <div id="archiveList" class="archive-list"></div>
