@@ -136,6 +136,7 @@ function renderTable(data) {
               <th>Street</th>
               <th class="num">List</th>
               <th class="num">Beds</th>
+              <th class="num">Baths</th>
               <th class="num">Age</th>
               <th>Type</th>
               <th class="num">n</th>
@@ -193,6 +194,7 @@ function renderTable(data) {
                   <td>${streetInner}</td>
                   <td class="num">${money(r.salePrice)}</td>
                   <td class="num">${r.saleBeds ?? "—"}</td>
+                  <td class="num">${r.saleBaths ?? "—"}</td>
                   <td class="num">${r.saleAge ?? "—"}</td>
                   <td>${escapeHtml(String(r.saleType ?? "—"))}</td>
                   <td class="num">${r.compCount}</td>
@@ -545,6 +547,9 @@ form.addEventListener("submit", async (ev) => {
   const limit = fd.get("limit");
   const minComps = fd.get("minComps");
   const maxAge = fd.get("maxAge");
+  const propertyType = String(fd.get("propertyType") || "").trim();
+  const bedrooms = fd.get("bedrooms");
+  const bathrooms = fd.get("bathrooms");
   const preferType = fd.get("preferType") === "on" ? "1" : "";
   const headed = fd.get("headed") === "on" ? "1" : "";
   const useChrome = fd.get("useChrome") === "on";
@@ -572,6 +577,9 @@ form.addEventListener("submit", async (ev) => {
   if (limit) params.set("limit", String(limit));
   if (minComps) params.set("minComps", String(minComps));
   if (maxAge) params.set("maxAge", String(maxAge));
+  if (propertyType) params.set("propertyType", propertyType);
+  if (bedrooms) params.set("bedrooms", String(bedrooms));
+  if (bathrooms) params.set("bathrooms", String(bathrooms));
   if (preferType) params.set("preferType", preferType);
   if (headed) params.set("headed", headed);
   if (!useChrome) params.set("useChrome", "0");

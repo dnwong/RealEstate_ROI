@@ -151,6 +151,18 @@ function pickBeds(obj) {
   return null;
 }
 
+function pickBaths(obj) {
+  const b =
+    obj.baths ??
+    obj.bathrooms ??
+    obj.bath ??
+    obj.hdpData?.homeInfo?.bathrooms ??
+    obj.miniCardData?.baths;
+  if (typeof b === "number" && Number.isFinite(b)) return b;
+  if (typeof b === "string" && /^\d+(\.\d+)?$/.test(b)) return Number(b);
+  return null;
+}
+
 function pickHomeType(obj) {
   return (
     obj.homeType ??
@@ -260,6 +272,7 @@ function createListingRow(zpid, price, obj) {
     price,
     priceSource: obj.__priceSource ?? "listing",
     bedrooms: pickBeds(obj),
+    bathrooms: pickBaths(obj),
     homeType: pickHomeType(obj),
     address,
     streetAddress: street,
@@ -280,6 +293,10 @@ function enrichListingFromObj(row, obj, listingType = "sale") {
   if (row.bedrooms == null) {
     const b = pickBeds(obj);
     if (b != null) row.bedrooms = b;
+  }
+  if (row.bathrooms == null) {
+    const b = pickBaths(obj);
+    if (b != null) row.bathrooms = b;
   }
   if (row.homeType == null) row.homeType = pickHomeType(obj);
   if (row.address == null) {
@@ -466,6 +483,7 @@ function mergeListingDuplicates(a, b) {
     price,
     priceSource: preferBPrice ? b.priceSource : a.priceSource ?? b.priceSource,
     bedrooms: a.bedrooms ?? b.bedrooms,
+    bathrooms: a.bathrooms ?? b.bathrooms,
     homeType: a.homeType ?? b.homeType,
     address: a.address ?? b.address,
     streetAddress: a.streetAddress ?? b.streetAddress,

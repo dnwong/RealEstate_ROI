@@ -87,6 +87,7 @@ export function compareSalesToRentComps(sales, rentals, options = {}) {
       salePhotoUrl: sale.photoUrl ?? null,
       salePrice: sale.price,
       saleBeds: sale.bedrooms,
+      saleBaths: sale.bathrooms ?? null,
       saleSqft: sale.sqft ?? null,
       saleYearBuilt: sale.yearBuilt ?? null,
       saleAge:

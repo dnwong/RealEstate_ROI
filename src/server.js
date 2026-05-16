@@ -228,6 +228,50 @@ function parseZip(q) {
   return z.length === 5 ? z : null;
 }
 
+function parseNumberFilter(value, min, max) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
+}
+
+function parsePropertyTypeFilter(value) {
+  const v = String(value || "").trim().toLowerCase();
+  return ["single_family", "townhome", "condo"].includes(v) ? v : "";
+}
+
+function matchesPropertyType(listing, propertyType) {
+  if (!propertyType) return true;
+  const type = String(listing.homeType || "").toLowerCase().replace(/[_-]/g, " ");
+  if (!type) return true;
+  if (propertyType === "single_family") {
+    return /single|sfh|house/.test(type) && !/town|condo|apartment/.test(type);
+  }
+  if (propertyType === "townhome") return /town/.test(type);
+  if (propertyType === "condo") return /condo/.test(type);
+  return true;
+}
+
+function filterListings(listings, filters) {
+  const currentYear = new Date().getFullYear();
+  return listings.filter((listing) => {
+    if (filters.maxAge != null) {
+      if (
+        listing.yearBuilt == null ||
+        !Number.isFinite(listing.yearBuilt) ||
+        Math.max(0, currentYear - listing.yearBuilt) > filters.maxAge
+      ) {
+        return false;
+      }
+    }
+    if (filters.bedrooms != null && listing.bedrooms != null && listing.bedrooms !== filters.bedrooms) {
+      return false;
+    }
+    if (filters.bathrooms != null && listing.bathrooms != null && listing.bathrooms < filters.bathrooms) {
+      return false;
+    }
+    return matchesPropertyType(listing, filters.propertyType);
+  });
+}
+
 async function validateCityState(city, state) {
   if (!city || !stateNames[state]) return false;
   const params = new URLSearchParams({
@@ -589,6 +633,10 @@ app.get("/api/compare", requireUser, async (req, res) => {
   const maxAge = Number.isFinite(maxAgeRaw)
     ? Math.min(300, Math.max(0, maxAgeRaw))
     : null;
+  const propertyType = parsePropertyTypeFilter(req.query.propertyType);
+  const bedrooms = parseNumberFilter(req.query.bedrooms, 0, 20);
+  const bathrooms = parseNumberFilter(req.query.bathrooms, 0, 20);
+  const filters = { maxAge, propertyType, bedrooms, bathrooms };
 
   if (!zip && !(city && state)) {
     res.status(400).json({
@@ -621,33 +669,26 @@ app.get("/api/compare", requireUser, async (req, res) => {
       scrapeZillowListings({ ...scrapeOpts, listingType: "rent" }),
     ]);
 
-    const currentYear = new Date().getFullYear();
-    const saleListings = maxAge == null
-      ? salePage.listings
-      : salePage.listings.filter(
-          (l) =>
-            l.yearBuilt != null &&
-            Number.isFinite(l.yearBuilt) &&
-            Math.max(0, currentYear - l.yearBuilt) <= maxAge
-        );
+    const saleListings = filterListings(salePage.listings, filters);
+    const rentListings = filterListings(rentPage.listings, { ...filters, maxAge: null });
 
-    if (!saleListings.length || !rentPage.listings.length) {
+    if (!saleListings.length || !rentListings.length) {
       res.status(422).json({
         error:
-          maxAge == null
+          maxAge == null && !propertyType && bedrooms == null && bathrooms == null
             ? "Not enough listings parsed (sale and/or rent empty). Zillow may be blocking automation—try the web form option “Show browser (headed)”, install Google Chrome, or run the CLI with --headed."
-            : "No sale listings matched the max home age filter. Try increasing max age or leaving it blank.",
+            : "No listings matched the filters. Try widening the filters or leaving them blank.",
         saleUrl: salePage.url,
         rentUrl: rentPage.url,
         saleCount: saleListings.length,
-        rentCount: rentPage.listings.length,
+        rentCount: rentListings.length,
       });
       return;
     }
 
     const rows = compareSalesToRentComps(
       saleListings,
-      rentPage.listings,
+      rentListings,
       { minComps, preferType }
     );
 
@@ -656,10 +697,13 @@ app.get("/api/compare", requireUser, async (req, res) => {
       saleUrl: salePage.url,
       rentUrl: rentPage.url,
       saleCount: saleListings.length,
-      rentCount: rentPage.listings.length,
+      rentCount: rentListings.length,
       minComps,
       preferType,
       maxAge,
+      propertyType,
+      bedrooms,
+      bathrooms,
       rows,
     };
 
@@ -668,9 +712,9 @@ app.get("/api/compare", requireUser, async (req, res) => {
       zip,
       city: city || null,
       state: state || null,
-      query: { zip, city: city || null, state: state || null, limit, minComps, preferType, maxAge },
+      query: { zip, city: city || null, state: state || null, limit, minComps, preferType, maxAge, propertyType, bedrooms, bathrooms },
       saleListings,
-      rentListings: rentPage.listings,
+      rentListings,
     });
 
     res.json({
