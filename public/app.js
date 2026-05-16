@@ -432,7 +432,7 @@ function renderArchives(searches) {
           </span>
           <span class="archive-item-meta">${rowCount} rows · ${s.sale_count} sales · ${s.rent_count} rentals</span>
         </button>
-        <button type="button" class="archive-delete-one danger-btn" data-archive-id="${id}" data-archive-label="${escapeHtml(String(s.region))}">Delete</button>
+        <button type="button" class="archive-delete-one secondary-btn danger-btn" data-archive-id="${id}" data-archive-label="${escapeHtml(String(s.region))}">Delete</button>
       </div>`;
     })
     .join("");
