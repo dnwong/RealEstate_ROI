@@ -605,14 +605,21 @@ refreshArchivesBtn?.addEventListener("click", () => {
 });
 
 deleteArchivesBtn?.addEventListener("click", () => {
-  if (!currentArchives.length) {
+  const archiveItems = archiveListEl ? [...archiveListEl.querySelectorAll(".archive-item")] : [];
+  if (!archiveItems.length) {
     if (archiveStatusEl) archiveStatusEl.textContent = "No archived searches are available to delete.";
     return;
   }
   if (!archiveDeleteMode) {
     archiveDeleteMode = true;
     selectedArchiveIds.clear();
-    renderArchives(currentArchives);
+    archiveItems.forEach((item) => {
+      const select = item.querySelector(".archive-select");
+      if (select) select.hidden = false;
+      const checkbox = item.querySelector(".archive-checkbox");
+      if (checkbox) checkbox.checked = false;
+    });
+    updateDeleteArchivesButton();
     if (archiveStatusEl) archiveStatusEl.textContent = "Select one or more archived searches to delete.";
     return;
   }
