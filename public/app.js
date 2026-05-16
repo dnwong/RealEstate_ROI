@@ -439,7 +439,7 @@ function renderArchives(searches) {
 
 function updateDeleteArchivesButton() {
   if (!deleteArchivesBtn) return;
-  deleteArchivesBtn.disabled = currentArchives.length === 0;
+  deleteArchivesBtn.disabled = false;
   deleteArchivesBtn.textContent = archiveDeleteMode && selectedArchiveIds.size
     ? `Delete Selected (${selectedArchiveIds.size})`
     : "Delete";
@@ -605,6 +605,10 @@ refreshArchivesBtn?.addEventListener("click", () => {
 });
 
 deleteArchivesBtn?.addEventListener("click", () => {
+  if (!currentArchives.length) {
+    if (archiveStatusEl) archiveStatusEl.textContent = "No archived searches are available to delete.";
+    return;
+  }
   if (!archiveDeleteMode) {
     archiveDeleteMode = true;
     selectedArchiveIds.clear();
