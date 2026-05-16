@@ -552,6 +552,10 @@ body {
   cursor: pointer;
 }
 
+.archive-delete-one {
+  flex: 0 0 auto;
+}
+
 .archive-item-main {
   display: grid;
   gap: 0.15rem;

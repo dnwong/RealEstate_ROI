@@ -432,6 +432,7 @@ function renderArchives(searches) {
           </span>
           <span class="archive-item-meta">${rowCount} rows · ${s.sale_count} sales · ${s.rent_count} rentals</span>
         </button>
+        <button type="button" class="archive-delete-one danger-btn" data-archive-id="${id}" data-archive-label="${escapeHtml(String(s.region))}">Delete</button>
       </div>`;
     })
     .join("");
@@ -476,16 +477,15 @@ async function loadArchives() {
   }
 }
 
-async function deleteSelectedArchives() {
+async function deleteArchivesByIds(ids, label) {
   if (!archiveStatusEl) return;
-  if (!selectedArchiveIds.size) {
+  if (!ids.length) {
     archiveStatusEl.textContent = "Select one or more archived searches to delete.";
     return;
   }
-  const ids = [...selectedArchiveIds];
-  const confirmed = window.confirm(`Delete ${ids.length} selected archived search${ids.length === 1 ? "" : "es"}? This cannot be undone.`);
+  const confirmed = window.confirm(`Delete ${label}? This cannot be undone.`);
   if (!confirmed) return;
-  archiveStatusEl.textContent = "Deleting selected archives…";
+  archiveStatusEl.textContent = "Deleting archive…";
   if (deleteArchivesBtn) deleteArchivesBtn.disabled = true;
   try {
     const res = await fetch("/api/archives", {
@@ -504,12 +504,17 @@ async function deleteSelectedArchives() {
     }
     archiveDeleteMode = false;
     selectedArchiveIds.clear();
-    archiveStatusEl.textContent = `Deleted ${body.deletedCount ?? 0} archived search${body.deletedCount === 1 ? "" : "es"}.`;
     await loadArchives();
+    archiveStatusEl.textContent = `Deleted ${body.deletedCount ?? 0} archived search${body.deletedCount === 1 ? "" : "es"}.`;
   } catch (e) {
     archiveStatusEl.textContent = e instanceof Error ? e.message : String(e);
     updateDeleteArchivesButton();
   }
+}
+
+async function deleteSelectedArchives() {
+  const ids = [...selectedArchiveIds];
+  await deleteArchivesByIds(ids, `${ids.length} selected archived search${ids.length === 1 ? "" : "es"}`);
 }
 
 async function loadArchivedSearch(id) {
@@ -641,6 +646,11 @@ deleteArchivesBtn?.addEventListener("click", () => {
 });
 
 archiveListEl?.addEventListener("click", (ev) => {
+  const deleteBtn = ev.target.closest("button.archive-delete-one");
+  if (deleteBtn && archiveListEl.contains(deleteBtn)) {
+    deleteArchivesByIds([deleteBtn.dataset.archiveId], `"${deleteBtn.dataset.archiveLabel || "this archived search"}"`);
+    return;
+  }
   const checkbox = ev.target.closest("input.archive-checkbox");
   if (checkbox && archiveListEl.contains(checkbox)) {
     if (checkbox.checked) {
