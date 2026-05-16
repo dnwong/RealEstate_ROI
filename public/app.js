@@ -440,9 +440,13 @@ function renderArchives(searches) {
 function updateDeleteArchivesButton() {
   if (!deleteArchivesBtn) return;
   deleteArchivesBtn.disabled = false;
-  deleteArchivesBtn.textContent = archiveDeleteMode && selectedArchiveIds.size
+  if (!archiveDeleteMode) {
+    deleteArchivesBtn.textContent = "Delete";
+    return;
+  }
+  deleteArchivesBtn.textContent = selectedArchiveIds.size
     ? `Delete Selected (${selectedArchiveIds.size})`
-    : "Delete";
+    : "Cancel Delete";
 }
 
 async function loadArchives() {
@@ -623,6 +627,16 @@ deleteArchivesBtn?.addEventListener("click", () => {
     if (archiveStatusEl) archiveStatusEl.textContent = "Select one or more archived searches to delete.";
     return;
   }
+  if (!selectedArchiveIds.size) {
+    archiveDeleteMode = false;
+    archiveItems.forEach((item) => {
+      const select = item.querySelector(".archive-select");
+      if (select) select.hidden = true;
+    });
+    updateDeleteArchivesButton();
+    if (archiveStatusEl) archiveStatusEl.textContent = "Delete canceled.";
+    return;
+  }
   deleteSelectedArchives();
 });
 
@@ -639,6 +653,19 @@ archiveListEl?.addEventListener("click", (ev) => {
   }
   const btn = ev.target.closest("button.archive-load");
   if (!btn || !archiveListEl.contains(btn)) return;
+  if (archiveDeleteMode) {
+    const item = btn.closest(".archive-item");
+    const itemCheckbox = item?.querySelector("input.archive-checkbox");
+    if (!itemCheckbox) return;
+    itemCheckbox.checked = !itemCheckbox.checked;
+    if (itemCheckbox.checked) {
+      selectedArchiveIds.add(itemCheckbox.dataset.archiveId);
+    } else {
+      selectedArchiveIds.delete(itemCheckbox.dataset.archiveId);
+    }
+    updateDeleteArchivesButton();
+    return;
+  }
   loadArchivedSearch(btn.dataset.archiveId);
 });
 
