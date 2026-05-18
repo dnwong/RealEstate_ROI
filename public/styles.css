@@ -80,7 +80,7 @@ body {
   margin: 0 0 3px;
 }
 
-.app-title {
+.header h1.app-title {
   display: flex;
   align-items: center;
   gap: 8px;

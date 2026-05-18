@@ -14,7 +14,8 @@
     "roi": "node src/cli.js",
     "web": "node src/server.js",
     "check": "node --check public/app.js && node --check src/cli.js && node --check src/compare.js && node --check src/db.js && node --check src/roi.js && node --check src/server.js && node --check src/stats.js && node --check src/zillowScrape.js && node --check src/zillowUrls.js",
-    "install-browser": "playwright install chromium"
+    "install-browser": "playwright install chromium",
+    "autopush": "node scripts/auto-commit-push.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
