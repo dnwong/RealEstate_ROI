@@ -73,11 +73,24 @@ body {
 }
 
 .header h1 {
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: 0.3px;
   line-height: 1.25;
   margin: 0 0 3px;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e90ff;
+}
+
+.app-title-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
 }
 
 .lede {
