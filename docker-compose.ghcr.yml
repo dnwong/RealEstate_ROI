@@ -1,14 +1,32 @@
-# Portainer: Stacks → Add stack → paste this file.
-# Replace IMAGE_TAG with the short git SHA from a green Actions run (e.g. 9888a5c).
+# Portainer: Stacks → Add stack → Web editor → paste this file, then fill in the
+# stack's "Environment variables" section before deploying.
+#
+#   IMAGE_TAG          Image tag to run. Use the short git SHA from a green
+#                      Actions run (e.g. 501c21e) or "latest". Default: latest.
+#   SESSION_SECRET     REQUIRED. Signs session cookies; the app falls back to a
+#                      public default, so it is mandatory here. Generate with:
+#                        openssl rand -hex 32
+#   POSTGRES_PASSWORD  Password for the bundled Postgres. Default: realestate.
+#                      Change it before exposing this host to anything else.
+#
+# If ghcr.io/dnwong/realestate-roi is a private package, add it first under
+# Portainer → Registries (GitHub username + token with read:packages).
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: realestate_roi
       POSTGRES_USER: realestate
-      POSTGRES_PASSWORD: realestate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-realestate}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    # The app initializes its schema once at startup and caches the result, so
+    # it must not start until the database accepts connections.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U realestate -d realestate_roi"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     restart: unless-stopped
 
   realestate-roi:
@@ -21,9 +39,15 @@ services:
       HOST: "0.0.0.0"
       NODE_ENV: production
       PLAYWRIGHT_IN_DOCKER: "1"
-      DATABASE_URL: postgres://realestate:realestate@postgres:5432/realestate_roi
+      SESSION_SECRET: "${SESSION_SECRET:?Set SESSION_SECRET in the stack environment variables (openssl rand -hex 32)}"
+      DATABASE_URL: postgres://realestate:${POSTGRES_PASSWORD:-realestate}@postgres:5432/realestate_roi
+      # Optional tuning — uncomment only if needed:
+      # ZILLOW_USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+      # ZILLOW_USE_CHROME: "0"
+      # DATABASE_SSL: "1"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     shm_size: "1gb"
     init: true
     restart: unless-stopped
