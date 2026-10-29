@@ -15,9 +15,9 @@ services:
     image: ghcr.io/dnwong/realestate-roi:${IMAGE_TAG:-latest}
     pull_policy: always
     ports:
-      - "3000:3000"
+      - "3009:3009"
     environment:
-      PORT: "3000"
+      PORT: "3009"
       HOST: "0.0.0.0"
       NODE_ENV: production
       PLAYWRIGHT_IN_DOCKER: "1"

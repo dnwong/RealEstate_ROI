@@ -18,9 +18,9 @@ services:
       dockerfile: Dockerfile
     image: realestate-roi:local
     ports:
-      - "3000:3000"
+      - "3009:3009"
     environment:
-      PORT: "3000"
+      PORT: "3009"
       HOST: "0.0.0.0"
       NODE_ENV: production
       DATABASE_URL: postgres://realestate:realestate@postgres:5432/realestate_roi
