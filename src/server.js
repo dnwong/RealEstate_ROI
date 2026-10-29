@@ -608,7 +608,9 @@ app.get("/api/archives/:id", requireUser, async (req, res) => {
   }
 });
 
-app.get("/api/compare", requireUser, async (req, res) => {
+// Public: comparisons work without an account. Archiving (when Postgres is
+// configured and the visitor is signed in) still requires a user.
+app.get("/api/compare", async (req, res) => {
   const zip = parseZip(req.query.zip);
   const city = req.query.city?.trim();
   const state = req.query.state?.trim()?.toUpperCase();
@@ -707,15 +709,18 @@ app.get("/api/compare", requireUser, async (req, res) => {
       rows,
     };
 
-    const archived = await saveArchivedSearch({
-      ...payload,
-      zip,
-      city: city || null,
-      state: state || null,
-      query: { zip, city: city || null, state: state || null, limit, minComps, preferType, maxAge, propertyType, bedrooms, bathrooms },
-      saleListings,
-      rentListings,
-    });
+    const user = await currentUser(req);
+    const archived = user
+      ? await saveArchivedSearch({
+          ...payload,
+          zip,
+          city: city || null,
+          state: state || null,
+          query: { zip, city: city || null, state: state || null, limit, minComps, preferType, maxAge, propertyType, bedrooms, bathrooms },
+          saleListings,
+          rentListings,
+        })
+      : null;
 
     res.json({
       ...payload,
@@ -734,7 +739,7 @@ initDb().catch((e) => {
   console.error(`Archive DB init failed: ${msg}`);
 });
 
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 3009;
 const host = process.env.HOST || "0.0.0.0";
 const server = app.listen(port, host, () => {
   const hint =

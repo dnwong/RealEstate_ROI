@@ -18,7 +18,9 @@ const profileForm = document.getElementById("profileForm");
 const profileStatusEl = document.getElementById("profileStatus");
 const adminStatusEl = document.getElementById("adminStatus");
 const adminUsersEl = document.getElementById("adminUsers");
+const authBackBtn = document.getElementById("authBack");
 let currentUser = null;
+let authEnabled = false;
 let authMode = "login";
 let resetPasswordStep = "request";
 let selectedArchiveIds = new Set();
@@ -305,8 +307,13 @@ function showResetConfirm(message) {
 function renderUserBar() {
   if (!userBarEl) return;
   if (!currentUser) {
-    userBarEl.hidden = true;
-    userBarEl.innerHTML = "";
+    if (!authEnabled) {
+      userBarEl.hidden = true;
+      userBarEl.innerHTML = "";
+      return;
+    }
+    userBarEl.hidden = false;
+    userBarEl.innerHTML = '<button type="button" data-user-action="login">Log in</button>';
     return;
   }
   userBarEl.hidden = false;
@@ -328,12 +335,25 @@ function showApp(user) {
   loadArchives();
 }
 
+// Signed-out (or no-database) visitors still get the comparison form; only
+// archives, profile and the admin panel require an account.
+function showGuest() {
+  currentUser = null;
+  if (authViewEl) authViewEl.hidden = true;
+  if (settingsViewEl) settingsViewEl.hidden = true;
+  if (adminViewEl) adminViewEl.hidden = true;
+  if (mainEl) mainEl.hidden = false;
+  renderUserBar();
+  loadArchives();
+}
+
 function showAuth(message = "") {
   currentUser = null;
   if (mainEl) mainEl.hidden = true;
   if (settingsViewEl) settingsViewEl.hidden = true;
   if (adminViewEl) adminViewEl.hidden = true;
   if (authViewEl) authViewEl.hidden = false;
+  if (authBackBtn) authBackBtn.hidden = false;
   renderUserBar();
   setAuthMode(authMode);
   authStatusEl.textContent = message;
@@ -454,6 +474,16 @@ function updateDeleteArchivesButton() {
 
 async function loadArchives() {
   if (!archiveStatusEl || !archiveListEl) return;
+  if (!currentUser) {
+    archiveStatusEl.textContent = authEnabled
+      ? "Log in to view archived searches."
+      : "Archives are disabled. Set DATABASE_URL to enable Postgres archive storage.";
+    archiveDeleteMode = false;
+    selectedArchiveIds.clear();
+    updateDeleteArchivesButton();
+    renderArchives([]);
+    return;
+  }
   archiveStatusEl.textContent = "Loading archives…";
   try {
     const res = await fetch("/api/archives?limit=50", {
@@ -748,14 +778,20 @@ authForm?.addEventListener("submit", async (ev) => {
 userBarEl?.addEventListener("click", async (ev) => {
   const action = ev.target.closest("button")?.dataset.userAction;
   if (!action) return;
-  if (action === "profile") {
+  if (action === "login") {
+    showAuth("Log in to save searches, view archives, and manage users.");
+  } else if (action === "profile") {
     showSettings();
   } else if (action === "admin") {
     showAdminPanel();
   } else if (action === "logout") {
     await apiJson("/api/auth/logout", { method: "POST" });
-    showAuth("Logged out.");
+    showGuest();
   }
+});
+
+authBackBtn?.addEventListener("click", () => {
+  showGuest();
 });
 
 profileForm?.addEventListener("submit", async (ev) => {
@@ -833,14 +869,9 @@ document.querySelectorAll("[data-panel-close]").forEach((btn) => {
 async function initAuth() {
   try {
     const body = await apiJson("/api/auth/me");
-    if (!body.authEnabled) {
-      if (authViewEl) authViewEl.hidden = true;
-      if (mainEl) mainEl.hidden = false;
-      loadArchives();
-      return;
-    }
+    authEnabled = Boolean(body.authEnabled);
     if (body.user) showApp(body.user);
-    else showAuth("Log in or register to continue. First registered user becomes admin.");
+    else showGuest();
   } catch (e) {
     showAuth(e instanceof Error ? e.message : String(e));
   }
